@@ -1,0 +1,6 @@
+{
+  "name": "PALABRA Academy — DHIU Sibaq Preparation Platform",
+  "description": "Interactive Spanish vocabulary translation and 60-minute competition preparation platform for TN.31 PALABRA at DHIU Sibaq National Arts Fest.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

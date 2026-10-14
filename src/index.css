@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-sans: 'Nunito', 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-display: 'Nunito', 'Outfit', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    /* Duolingo Brand Colors */
+    --duo-green: #58CC02;
+    --duo-green-dark: #46A302;
+    --duo-green-light: #D7FFB8;
+    --duo-blue: #1CB0F6;
+    --duo-blue-dark: #1899D6;
+    --duo-orange: #FF9600;
+    --duo-orange-dark: #E58500;
+    --duo-red: #FF4B4B;
+    --duo-red-dark: #EA2B2B;
+    --duo-yellow: #FFC800;
+    --duo-yellow-dark: #E5A500;
+    --duo-purple: #CE82FF;
+    --duo-purple-dark: #A55EEA;
+    --duo-grey: #E5E5E5;
+    --duo-grey-dark: #AFAFAF;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #3C3C3C;
+    background-color: #F7F7F7;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body {
+    color: #F1F5F9;
+    background-color: #131F24;
+  }
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Duolingo 3D Tactile Button styles */
+.btn-duo-green {
+  background-color: #58CC02;
+  border-bottom: 4px solid #46A302;
+  color: #FFFFFF;
+  font-weight: 800;
+  border-radius: 1rem;
+  transition: all 0.1s ease-in-out;
+}
+.btn-duo-green:hover:not(:disabled) {
+  background-color: #61E002;
+}
+.btn-duo-green:active:not(:disabled) {
+  transform: translateY(3px);
+  border-bottom-width: 1px;
+  margin-bottom: 3px;
+}
+
+.btn-duo-blue {
+  background-color: #1CB0F6;
+  border-bottom: 4px solid #1899D6;
+  color: #FFFFFF;
+  font-weight: 800;
+  border-radius: 1rem;
+  transition: all 0.1s ease-in-out;
+}
+.btn-duo-blue:hover:not(:disabled) {
+  background-color: #38BEFF;
+}
+.btn-duo-blue:active:not(:disabled) {
+  transform: translateY(3px);
+  border-bottom-width: 1px;
+  margin-bottom: 3px;
+}
+
+.btn-duo-white {
+  background-color: #FFFFFF;
+  border: 2px solid #E5E5E5;
+  border-bottom: 4px solid #CECECE;
+  color: #4B4B4B;
+  font-weight: 800;
+  border-radius: 1rem;
+  transition: all 0.1s ease-in-out;
+}
+.btn-duo-white:hover:not(:disabled) {
+  background-color: #F7F7F7;
+  border-color: #E5E5E5;
+}
+.btn-duo-white:active:not(:disabled) {
+  transform: translateY(3px);
+  border-bottom-width: 2px;
+  margin-bottom: 2px;
+}
+
+.btn-duo-red {
+  background-color: #FF4B4B;
+  border-bottom: 4px solid #EA2B2B;
+  color: #FFFFFF;
+  font-weight: 800;
+  border-radius: 1rem;
+  transition: all 0.1s ease-in-out;
+}
+.btn-duo-red:hover:not(:disabled) {
+  background-color: #FF5E5E;
+}
+.btn-duo-red:active:not(:disabled) {
+  transform: translateY(3px);
+  border-bottom-width: 1px;
+  margin-bottom: 3px;
+}
+
+/* Winding path node bounce animation */
+@keyframes duo-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-5deg); }
+  75% { transform: rotate(5deg); }
+}
+.animate-duo-wiggle {
+  animation: duo-wiggle 1.5s ease-in-out infinite;
+}
+
+@keyframes float-subtle {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+.animate-float {
+  animation: float-subtle 3s ease-in-out infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E5E5;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #273842;
+}
+
+/* Print styling */
+@media print {
+  nav, aside, header, footer, button, .no-print {
+    display: none !important;
+  }
+  body, main {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-page {
+    width: 100% !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+}
