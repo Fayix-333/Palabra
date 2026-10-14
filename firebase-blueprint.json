@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User learning progress, stats, settings, and vocabulary mastery",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Preferences including theme, sound, and daily goal"
+        },
+        "stats": {
+          "type": "object",
+          "description": "Learning statistics including XP, streak, and completed lessons"
+        },
+        "wordProgress": {
+          "type": "object",
+          "description": "Mastery data per vocabulary word"
+        },
+        "quizHistory": {
+          "type": "array",
+          "description": "Recent quiz completion records"
+        },
+        "mockHistory": {
+          "type": "array",
+          "description": "Mock test records and scores"
+        },
+        "studyPlan": {
+          "type": "array",
+          "description": "15-day preparation plan checkpoints"
+        },
+        "updatedAt": {
+          "type": "number",
+          "description": "Epoch timestamp of last synchronization"
+        }
+      },
+      "required": ["userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Individual student profile and progress storage"
+    }
+  }
+}

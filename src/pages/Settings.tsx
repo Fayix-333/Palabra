@@ -20,7 +20,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LocalStorageManager } from '../utils/storage';
-import { loginWithGoogle, logoutUser } from '../utils/firebase';
 import { Modal } from '../components/common/Modal';
 
 export const Settings: React.FC = () => {
@@ -31,6 +30,8 @@ export const Settings: React.FC = () => {
     isFirebaseAvailable,
     cloudSyncStatus,
     manualCloudSync,
+    signInWithGoogle,
+    signOutUser,
     resetAllProgress,
   } = useApp();
 
@@ -81,7 +82,7 @@ export const Settings: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       setAuthError(null);
-      await loginWithGoogle();
+      await signInWithGoogle();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       setAuthError(msg);
@@ -90,7 +91,7 @@ export const Settings: React.FC = () => {
 
   const handleGoogleLogout = async () => {
     try {
-      await logoutUser();
+      await signOutUser();
     } catch {
       // ignore
     }

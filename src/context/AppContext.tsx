@@ -29,6 +29,8 @@ import {
   syncUserDataToFirestore,
   fetchUserDataFromFirestore,
   isFirebaseConfigured,
+  loginWithGoogle,
+  logoutUser,
 } from '../utils/firebase';
 import { soundManager } from '../utils/sound';
 
@@ -76,6 +78,8 @@ interface AppContextType {
   isFirebaseAvailable: boolean;
   cloudSyncStatus: 'idle' | 'syncing' | 'synced' | 'error';
   manualCloudSync: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  signOutUser: () => Promise<void>;
   resetAllProgress: () => void;
   awardXp: (amount: number, reason?: string) => void;
   // Streak & Daily Goal helpers
@@ -751,6 +755,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [mockHistory, quizHistory, settings, stats, studyPlan, user, wordProgress]);
 
+  const signInWithGoogle = useCallback(async () => {
+    try {
+      setCloudSyncStatus('syncing');
+      const authUser = await loginWithGoogle();
+      if (authUser) {
+        // Load or merge cloud data
+        const cloudData = await fetchUserDataFromFirestore(authUser.uid);
+        if (cloudData) {
+          if (cloudData.settings) {
+            setSettings((prev) => ({
+              ...prev,
+              ...(cloudData.settings as UserSettings),
+              studentName: authUser.displayName || prev.studentName,
+            }));
+          }
+          if (cloudData.stats) {
+            const cs = cloudData.stats as UserStats;
+            setStats((prev) => ({
+              ...prev,
+              xp: Math.max(prev.xp, cs.xp || 0),
+              streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
+              completedLessonIds: Array.from(
+                new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
+              ),
+            }));
+          }
+          if (cloudData.wordProgress) {
+            setWordProgress((prev) => ({
+              ...prev,
+              ...(cloudData.wordProgress as Record<string, WordProgress>),
+            }));
+          }
+        } else {
+          // Sync existing local progress to fresh cloud account
+          await syncUserDataToFirestore(authUser.uid, {
+            userId: authUser.uid,
+            settings: {
+              ...settings,
+              studentName: authUser.displayName || settings.studentName,
+            },
+            stats,
+            wordProgress,
+            quizHistory: quizHistory.slice(0, 30),
+            mockHistory: mockHistory.slice(0, 20),
+            studyPlan,
+          });
+        }
+        setCloudSyncStatus('synced');
+      }
+    } catch (err) {
+      console.error('Google Sign-in failed:', err);
+      setCloudSyncStatus('error');
+      throw err;
+    }
+  }, [mockHistory, quizHistory, settings, stats, studyPlan, wordProgress]);
+
+  const signOutUser = useCallback(async () => {
+    await logoutUser();
+    setUser(null);
+    setCloudSyncStatus('idle');
+  }, []);
+
   const resetAllProgress = useCallback(() => {
     LocalStorageManager.resetAll();
     setSettings(DEFAULT_SETTINGS);
@@ -898,6 +964,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isFirebaseAvailable: isFirebaseConfigured,
         cloudSyncStatus,
         manualCloudSync,
+        signInWithGoogle,
+        signOutUser,
         resetAllProgress,
         awardXp,
         streakDays,

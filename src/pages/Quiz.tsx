@@ -21,6 +21,7 @@ import { evaluateAnswer } from '../utils/answerChecker';
 import { AccentKeyboard } from '../components/common/AccentKeyboard';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { ConfettiCelebration } from '../components/common/ConfettiCelebration';
+import { PacoMascot } from '../components/common/PacoMascot';
 import {
   CategoryId,
   DifficultyLevel,
@@ -75,6 +76,12 @@ export const Quiz: React.FC = () => {
         // Fallback to least practiced words if no mistakes recorded yet
         pool = [...VOCABULARY_DATABASE];
       }
+    } else if (mode === 'spelling_challenge' && categoryParam === 'all') {
+      // Accent Trainer / Spelling Master: filter or prioritize words with written accents or special letters
+      const accentFiltered = pool.filter((v) => /[áéíóúñÁÉÍÓÚÑ]/.test(v.spanish));
+      if (accentFiltered.length >= 10) {
+        pool = accentFiltered;
+      }
     } else {
       if (categoryParam !== 'all') {
         pool = pool.filter((v) => v.category === categoryParam);
@@ -92,14 +99,22 @@ export const Quiz: React.FC = () => {
 
     const selectedPool = pool.slice(0, Math.min(countParam, pool.length));
 
-    // Construct questions
+    // Construct questions based on mode
     const generated: QuizQuestion[] = selectedPool.map((vocab, index) => {
-      const isMultipleChoice = mode === 'multiple_choice';
+      let isMultipleChoice = mode === 'multiple_choice';
+
+      if (mode === 'mixed_quiz') {
+        // Alternate between multiple choice and typed
+        isMultipleChoice = index % 2 === 0;
+      } else if (mode === 'speed_round') {
+        // Rapid fire: 70% multiple choice for speed, 30% typed
+        isMultipleChoice = index % 3 !== 2;
+      }
 
       let options: string[] = [];
       if (isMultipleChoice) {
-        // Collect 3 distractors
-        const otherWords = VOCABULARY_DATABASE.filter((v) => v.id !== vocab.id);
+        // Collect 3 distractors from same category or pool
+        const otherWords = pool.filter((v) => v.id !== vocab.id);
         const shuffledOthers = [...otherWords].sort(() => 0.5 - Math.random());
         const distractors = shuffledOthers.slice(0, 3).map((v) => v.spanish);
         options = [vocab.spanish, ...distractors].sort(() => 0.5 - Math.random());
@@ -489,95 +504,93 @@ export const Quiz: React.FC = () => {
     );
   }
 
-  // ACTIVE QUIZ INTERFACE
+  // ACTIVE QUIZ INTERFACE (DUOLINGO STYLE)
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+    <div className="max-w-2xl mx-auto space-y-6 pb-28 pt-2 select-none">
       {/* Top progress and timer header */}
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <div className="flex items-center gap-2 font-medium">
-          <Link to="/practice" className="hover:underline">
-            Exit Quiz
-          </Link>
-          <span>/</span>
-          <span className="capitalize">{mode.replace('_', ' ')}</span>
+      <div className="flex items-center gap-4">
+        {/* Exit Button */}
+        <Link
+          to="/practice"
+          className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-xl transition-colors"
+          title="Exit Quiz"
+        >
+          <XCircle className="w-6 h-6 stroke-[2.2]" />
+        </Link>
+
+        {/* Duolingo Progress Bar */}
+        <div className="flex-1">
+          <ProgressBar
+            value={((currentIndex + 1) / questions.length) * 100}
+            size="md"
+            showPercentage={false}
+            colorClassName="bg-[#58CC02]"
+          />
         </div>
 
-        <div className="flex items-center gap-3">
-          {mode === 'speed_round' && (
-            <div
-              className={`flex items-center gap-1 font-mono font-bold px-2 py-0.5 rounded ${
-                timeLeft <= 3
-                  ? 'bg-rose-100 text-rose-700 animate-pulse'
-                  : 'bg-amber-100 text-amber-800'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-              <span>{timeLeft}s</span>
-            </div>
-          )}
-
-          <span className="font-mono font-medium">
-            Question {currentIndex + 1} of {questions.length}
+        {/* Speed Round Timer or Counter */}
+        {mode === 'speed_round' ? (
+          <div
+            className={`flex items-center gap-1.5 font-mono font-black px-3 py-1 rounded-2xl border-2 transition-all ${
+              timeLeft <= 3
+                ? 'bg-[#FFEBEB] text-[#FF4B4B] border-[#FF4B4B] animate-pulse ring-2 ring-red-400/30'
+                : 'bg-[#FFF5E5] text-[#FF9600] border-[#FFD280]'
+            }`}
+          >
+            <Clock className="w-4 h-4" />
+            <span className="text-sm">{timeLeft}s</span>
+          </div>
+        ) : (
+          <span className="font-mono font-black text-xs text-slate-400">
+            {currentIndex + 1}/{questions.length}
           </span>
-        </div>
+        )}
       </div>
 
-      {/* Progress bar */}
-      <ProgressBar
-        value={((currentIndex + 1) / questions.length) * 100}
-        size="sm"
-        showPercentage={false}
-        colorClassName="bg-rose-600 dark:bg-rose-500"
-      />
-
-      {/* Question Card */}
-      <div className="p-6 sm:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-md space-y-6">
-        {/* Category & hints */}
-        <div className="flex items-center justify-between text-xs text-slate-400">
+      {/* Main Question Card */}
+      <div className="space-y-6 pt-2">
+        {/* Category & Pronounce Audio Button */}
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+            <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               {currentQ.vocab.category}
             </span>
-            <span>·</span>
-            <span className="capitalize">{currentQ.vocab.difficulty}</span>
             {strictAccents && (
-              <>
-                <span>·</span>
-                <span className="text-amber-600 dark:text-amber-400">Strict accents</span>
-              </>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-[#FF9600]">
+                Strict Accents
+              </span>
             )}
           </div>
 
           <button
             type="button"
             onClick={() => soundManager.speakSpanish(currentQ.vocab.spanish, settings.speechRate)}
-            className="p-1 rounded text-slate-400 hover:text-slate-600"
-            title="Audio hint"
+            className="w-10 h-10 rounded-2xl bg-[#1CB0F6] hover:bg-[#1899D6] text-white flex items-center justify-center shadow-button active:translate-y-0.5 transition-all"
+            title="Hear Spanish pronunciation"
           >
-            <HelpCircle className="w-4 h-4" />
+            <Volume2 className="w-5 h-5 stroke-[2.5]" />
           </button>
         </div>
 
-        {/* English Prompt */}
-        <div className="text-center py-4 space-y-2">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-            Translate English word to Spanish
-          </span>
-          <h2 className="text-3xl sm:text-5xl font-extrabold font-display text-slate-900 dark:text-white tracking-tight">
-            {currentQ.vocab.english}
-          </h2>
-          {currentQ.vocab.gender && (
-            <span className="text-xs text-slate-400 font-mono">
-              Gender hint: {currentQ.vocab.gender}
-            </span>
-          )}
+        {/* Mascot & Speech Prompt */}
+        <div className="flex items-end gap-3 pt-2">
+          <PacoMascot size="md" mood={feedbackResult ? (feedbackResult.isCorrect ? 'happy' : 'thinking') : 'encouraging'} />
+          
+          <div className="p-4 rounded-3xl rounded-bl-sm border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs relative max-w-md">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
+              {currentQ.questionType === 'multiple_choice' ? 'Select the correct translation' : 'Type in Spanish'}
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5">
+              {currentQ.vocab.english}
+            </h2>
+          </div>
         </div>
 
         {/* INPUT AREA */}
         {currentQ.questionType === 'multiple_choice' ? (
           /* Multiple Choice Options */
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-            {currentQ.options?.map((opt) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
+            {currentQ.options?.map((opt, optIndex) => {
               const isSelected = selectedMcOption === opt;
               return (
                 <button
@@ -585,21 +598,32 @@ export const Quiz: React.FC = () => {
                   type="button"
                   disabled={isAnswerSubmitted}
                   onClick={() => setSelectedMcOption(opt)}
-                  className={`p-4 rounded-xl border text-sm font-semibold transition-all text-left flex items-center justify-between ${
+                  className={`p-4 rounded-2xl border-2 border-b-4 text-left flex items-center justify-between transition-all cursor-pointer ${
                     isSelected
-                      ? 'border-rose-600 bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 shadow-xs'
-                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-slate-800 dark:text-slate-200 hover:bg-slate-100'
+                      ? 'border-[#1CB0F6] bg-[#E5F6FF] dark:bg-sky-950/60 text-[#1CB0F6] shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100'
                   }`}
                 >
-                  <span>{opt}</span>
-                  {isSelected && <CheckCircle2 className="w-4 h-4 text-rose-600" />}
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black border ${
+                        isSelected
+                          ? 'border-[#1CB0F6] bg-[#1CB0F6] text-white'
+                          : 'border-slate-200 dark:border-slate-700 text-slate-400'
+                      }`}
+                    >
+                      {optIndex + 1}
+                    </span>
+                    <span className="text-base font-black">{opt}</span>
+                  </div>
+                  {isSelected && <CheckCircle2 className="w-5 h-5 text-[#1CB0F6] stroke-[2.5]" />}
                 </button>
               );
             })}
           </div>
         ) : (
           /* Typed Translation Input */
-          <div className="space-y-4 pt-2">
+          <div className="space-y-4 pt-4">
             <div className="space-y-1.5">
               <input
                 ref={inputRef}
@@ -608,11 +632,11 @@ export const Quiz: React.FC = () => {
                 value={userTypedInput}
                 onChange={(e) => setUserTypedInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Type Spanish translation..."
+                placeholder="Escribe en español..."
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck="false"
-                className="w-full text-lg sm:text-xl font-medium px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-rose-500 disabled:opacity-80"
+                className="w-full text-lg sm:text-2xl font-black px-5 py-4 rounded-2xl border-2 border-b-4 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#58CC02] disabled:opacity-90 transition-colors"
               />
             </div>
 
@@ -622,86 +646,105 @@ export const Quiz: React.FC = () => {
             )}
           </div>
         )}
+      </div>
 
-        {/* FEEDBACK BANNER (POST-SUBMIT) */}
-        {isAnswerSubmitted && feedbackResult && (
-          <div
-            className={`p-4 rounded-xl border text-xs space-y-1 animate-in fade-in duration-150 ${
-              feedbackResult.isCorrect
-                ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200'
-                : 'border-rose-300 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200'
-            }`}
-          >
-            <div className="flex items-center justify-between font-bold text-sm">
-              <span className="flex items-center gap-1.5">
+      {/* DUOLINGO STYLE BOTTOM SHEET / ACTION BAR */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 border-t-2 z-50 p-4 sm:p-5 transition-colors ${
+          !isAnswerSubmitted
+            ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+            : feedbackResult?.isCorrect
+            ? 'bg-[#D7FFB8] dark:bg-emerald-950 border-[#A5ED6E] dark:border-emerald-800'
+            : 'bg-[#FFEBEB] dark:bg-rose-950 border-[#FFB8B8] dark:border-rose-900'
+        }`}
+      >
+        <div className="max-w-2xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Feedback details */}
+          {isAnswerSubmitted && feedbackResult && (
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                  feedbackResult.isCorrect
+                    ? 'bg-[#58CC02] text-white shadow-xs'
+                    : 'bg-[#FF4B4B] text-white shadow-xs'
+                }`}
+              >
                 {feedbackResult.isCorrect ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <CheckCircle2 className="w-7 h-7 stroke-[2.5]" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-rose-600" />
+                  <XCircle className="w-7 h-7 stroke-[2.5]" />
                 )}
-                {feedbackResult.message}
-              </span>
+              </div>
+
+              <div>
+                <h4
+                  className={`text-lg sm:text-xl font-black leading-tight ${
+                    feedbackResult.isCorrect
+                      ? 'text-[#58CC02] dark:text-emerald-400'
+                      : 'text-[#FF4B4B] dark:text-rose-400'
+                  }`}
+                >
+                  {feedbackResult.isCorrect
+                    ? feedbackResult.message || '¡Excelente!'
+                    : 'Correct solution:'}
+                </h4>
+
+                {!feedbackResult.isCorrect && (
+                  <p className="text-sm font-black text-slate-800 dark:text-slate-100 mt-0.5">
+                    {currentQ.vocab.spanish}
+                    {currentQ.vocab.alternatives.length > 0 && (
+                      <span className="text-xs font-semibold text-slate-500 ml-1.5">
+                        (or {currentQ.vocab.alternatives.join(', ')})
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                {feedbackResult.missingAccent && (
+                  <p className="text-xs font-bold text-[#FF9600] mt-0.5">
+                    Watch the accent mark: {currentQ.vocab.spanish}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {!isAnswerSubmitted && (
+            <div className="hidden sm:block text-xs font-bold text-slate-400">
+              Press Enter to check
+            </div>
+          )}
+
+          {/* Action button */}
+          <div className="sm:w-48 shrink-0">
+            {!isAnswerSubmitted ? (
               <button
                 type="button"
-                onClick={() =>
-                  soundManager.speakSpanish(currentQ.vocab.spanish, settings.speechRate)
+                onClick={() => handleSubmitAnswer()}
+                disabled={
+                  currentQ.questionType === 'multiple_choice'
+                    ? !selectedMcOption
+                    : !userTypedInput.trim()
                 }
-                className="p-1 rounded hover:bg-black/5 flex items-center gap-1"
-                title="Pronounce"
+                className="w-full py-3.5 rounded-2xl btn-duo-green disabled:opacity-40 disabled:cursor-not-allowed text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-button"
               >
-                <Volume2 className="w-4 h-4" />
-                <span>Listen</span>
+                <span>CHECK</span>
+                <ArrowRight className="w-4 h-4 stroke-[3]" />
               </button>
-            </div>
-
-            {!feedbackResult.isCorrect && (
-              <p className="pt-1">
-                Accepted: <strong className="font-mono">{currentQ.vocab.spanish}</strong>
-                {currentQ.vocab.alternatives.length > 0 && (
-                  <span className="opacity-80 ml-1">
-                    (or {currentQ.vocab.alternatives.join(', ')})
-                  </span>
-                )}
-              </p>
-            )}
-
-            {currentQ.vocab.examplePhrase && (
-              <p className="opacity-80 italic pt-0.5">
-                "{currentQ.vocab.examplePhrase}"
-              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={handleNextQuestion}
+                autoFocus
+                className={`w-full py-3.5 rounded-2xl text-xs sm:text-sm font-black flex items-center justify-center gap-2 cursor-pointer shadow-button ${
+                  feedbackResult?.isCorrect ? 'btn-duo-green' : 'btn-duo-red'
+                }`}
+              >
+                <span>{currentIndex < questions.length - 1 ? 'CONTINUE' : 'FINISH'}</span>
+                <ChevronRight className="w-4 h-4 stroke-[3]" />
+              </button>
             )}
           </div>
-        )}
-
-        {/* ACTION BUTTON */}
-        <div className="pt-2">
-          {!isAnswerSubmitted ? (
-            <button
-              type="button"
-              onClick={() => handleSubmitAnswer()}
-              disabled={
-                currentQ.questionType === 'multiple_choice'
-                  ? !selectedMcOption
-                  : !userTypedInput.trim()
-              }
-              className="w-full py-3.5 rounded-2xl btn-duo-green disabled:opacity-40 disabled:cursor-not-allowed text-sm font-black flex items-center justify-center gap-2"
-            >
-              <span>CHECK ANSWER (ENTER)</span>
-              <ArrowRight className="w-4 h-4 stroke-[3]" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleNextQuestion}
-              autoFocus
-              className="w-full py-3.5 rounded-2xl btn-duo-green text-sm font-black flex items-center justify-center gap-2"
-            >
-              <span>
-                {currentIndex < questions.length - 1 ? 'CONTINUE (ENTER)' : 'VIEW QUIZ RESULTS'}
-              </span>
-              <ChevronRight className="w-4 h-4 stroke-[3]" />
-            </button>
-          )}
         </div>
       </div>
     </div>
