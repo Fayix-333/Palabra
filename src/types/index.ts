@@ -165,6 +165,7 @@ export interface UserStats {
   totalStudyTimeMinutes: number;
   dailyProgress: Record<string, number>; // date (YYYY-MM-DD) -> words practiced count
   dailyQuests: Record<string, { lessonsDone: number; correctCount: number; mistakeReviewCount: number; claimedIds: string[] }>;
+  goalAchievedDates: string[]; // dates (YYYY-MM-DD) on which daily goal was met
 }
 
 export interface DayPlanItem {

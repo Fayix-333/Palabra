@@ -32,6 +32,12 @@ import {
 } from '../utils/firebase';
 import { soundManager } from '../utils/sound';
 
+import {
+  fireLessonCompleteConfetti,
+  fireUnitTestConfetti,
+  fireGoalAchievedConfetti,
+} from '../components/common/ConfettiCelebration';
+
 interface CategoryMasteryStat {
   categoryId: CategoryId;
   name: string;
@@ -72,6 +78,15 @@ interface AppContextType {
   manualCloudSync: () => Promise<void>;
   resetAllProgress: () => void;
   awardXp: (amount: number, reason?: string) => void;
+  // Streak & Daily Goal helpers
+  streakDays: number;
+  longestStreak: number;
+  isDailyGoalAchieved: boolean;
+  dailyGoalWords: number;
+  dailyGoalPercentage: number;
+  celebrateGoal: () => void;
+  checkAndUpdateStreak: () => void;
+  triggerCelebration: (type?: 'lesson' | 'unit' | 'goal' | 'streak') => void;
   // Computed helpers
   totalWordsCount: number;
   totalWordsLearned: number;
@@ -155,6 +170,69 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return unsub;
   }, []);
 
+  // Helper to get local date string YYYY-MM-DD
+  const getTodayDateStr = (): string => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const today = getTodayDateStr();
+
+  // Streak Manager: calculates daily login streak on mount and persists to LocalStorage
+  const checkAndUpdateStreak = useCallback(() => {
+    const todayStr = getTodayDateStr();
+    setStats((prev) => {
+      const lastDate = prev.lastActiveDate;
+      let newStreak = prev.streakDays || 1;
+      let needsSave = false;
+
+      if (!lastDate) {
+        newStreak = 1;
+        needsSave = true;
+      } else if (lastDate === todayStr) {
+        // Logged in today; streak intact
+        newStreak = Math.max(1, prev.streakDays || 1);
+      } else {
+        const [tY, tM, tD] = todayStr.split('-').map(Number);
+        const [lY, lM, lD] = lastDate.split('-').map(Number);
+        const todayUtc = Date.UTC(tY, tM - 1, tD);
+        const lastUtc = Date.UTC(lY, lM - 1, lD);
+        const diffDays = Math.round((todayUtc - lastUtc) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 1) {
+          // Consecutive day login: increment streak!
+          newStreak = (prev.streakDays || 0) + 1;
+          needsSave = true;
+        } else if (diffDays > 1) {
+          // Streak broken after missing 1+ day
+          newStreak = 1;
+          needsSave = true;
+        }
+      }
+
+      if (needsSave || prev.lastActiveDate !== todayStr) {
+        const longest = Math.max(prev.longestStreak || 1, newStreak);
+        const updated: UserStats = {
+          ...prev,
+          streakDays: newStreak,
+          longestStreak: longest,
+          lastActiveDate: todayStr,
+          goalAchievedDates: prev.goalAchievedDates || [],
+        };
+        LocalStorageManager.saveStats(updated);
+        return updated;
+      }
+      return prev;
+    });
+  }, []);
+
+  useEffect(() => {
+    checkAndUpdateStreak();
+  }, [checkAndUpdateStreak]);
+
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings };
@@ -229,7 +307,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const completeLesson = useCallback(
     (lessonId: string, xpEarned: number) => {
-      const today = new Date().toISOString().split('T')[0];
+      const todayStr = getTodayDateStr();
+      const isUnitTest = lessonId.includes('chk') || lessonId.includes('test');
+
+      try {
+        if (isUnitTest) {
+          fireUnitTestConfetti();
+        } else {
+          fireLessonCompleteConfetti();
+        }
+      } catch {
+        // ignore
+      }
+
       setStats((prev) => {
         const alreadyDone = (prev.completedLessonIds || []).includes(lessonId);
         const updatedIds = alreadyDone
@@ -237,7 +327,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : [...(prev.completedLessonIds || []), lessonId];
 
         // Quests update
-        const todayQuests = prev.dailyQuests?.[today] || {
+        const todayQuests = prev.dailyQuests?.[todayStr] || {
           lessonsDone: 0,
           correctCount: 0,
           mistakeReviewCount: 0,
@@ -245,7 +335,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
         const updatedQuests = {
           ...prev.dailyQuests,
-          [today]: {
+          [todayStr]: {
             ...todayQuests,
             lessonsDone: todayQuests.lessonsDone + 1,
           },
@@ -256,6 +346,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           xp: prev.xp + xpEarned,
           completedLessonIds: updatedIds,
           dailyQuests: updatedQuests,
+          lastActiveDate: todayStr,
         };
         LocalStorageManager.saveStats(updated);
         return updated;
@@ -265,7 +356,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   );
 
   // Daily Quests
-  const today = new Date().toISOString().split('T')[0];
   const todayQuestData = stats.dailyQuests?.[today] || {
     lessonsDone: 0,
     correctCount: 0,
@@ -503,17 +593,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         recordQuestProgress('correct', 1);
       }
 
-      // Update daily word practice stats
+      // Update daily word practice stats and check daily goal
       setStats((prevStats) => {
         const currentCount = prevStats.dailyProgress[today] || 0;
         const newCount = currentCount + 1;
         const updatedDaily = { ...prevStats.dailyProgress, [today]: newCount };
 
         let xpBonus = 0;
-        if (currentCount < settings.dailyGoalWords && newCount >= settings.dailyGoalWords) {
-          xpBonus = 25; // Duolingo daily goal bonus
+        const wasGoalMet = currentCount >= settings.dailyGoalWords;
+        const goalMet = newCount >= settings.dailyGoalWords;
+        const goalDates = prevStats.goalAchievedDates || [];
+
+        if (!wasGoalMet && goalMet) {
+          xpBonus = 35; // Sibaq daily goal bonus
           if (settings.soundEffects) {
             soundManager.playFanfare();
+          }
+          try {
+            fireGoalAchievedConfetti();
+          } catch {
+            // ignore
           }
         }
 
@@ -521,6 +620,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ...prevStats,
           xp: prevStats.xp + (isCorrect ? 10 : 0) + xpBonus,
           dailyProgress: updatedDaily,
+          goalAchievedDates:
+            goalMet && !goalDates.includes(today) ? [...goalDates, today] : goalDates,
+          lastActiveDate: today,
         };
         LocalStorageManager.saveStats(nextStats);
         return nextStats;
@@ -736,6 +838,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [wordProgress]);
 
   const todayWordsCount = stats.dailyProgress[today] || 0;
+  const streakDays = stats.streakDays || 1;
+  const longestStreak = stats.longestStreak || 1;
+  const dailyGoalWords = settings.dailyGoalWords || 20;
+  const isDailyGoalAchieved = todayWordsCount >= dailyGoalWords;
+  const dailyGoalPercentage = Math.min(
+    100,
+    Math.round((todayWordsCount / dailyGoalWords) * 100)
+  );
+
+  const celebrateGoal = useCallback(() => {
+    fireGoalAchievedConfetti();
+    if (settings.soundEffects) {
+      soundManager.playFanfare();
+    }
+  }, [settings.soundEffects]);
+
+  const triggerCelebration = useCallback(
+    (type: 'lesson' | 'unit' | 'goal' | 'streak' = 'lesson') => {
+      if (type === 'unit') {
+        fireUnitTestConfetti();
+      } else if (type === 'goal' || type === 'streak') {
+        fireGoalAchievedConfetti();
+      } else {
+        fireLessonCompleteConfetti();
+      }
+    },
+    []
+  );
 
   return (
     <AppContext.Provider
@@ -770,6 +900,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         manualCloudSync,
         resetAllProgress,
         awardXp,
+        streakDays,
+        longestStreak,
+        isDailyGoalAchieved,
+        dailyGoalWords,
+        dailyGoalPercentage,
+        celebrateGoal,
+        checkAndUpdateStreak,
+        triggerCelebration,
         totalWordsCount,
         totalWordsLearned,
         totalWordsMastered,

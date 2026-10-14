@@ -26,6 +26,7 @@ import { soundManager } from '../utils/sound';
 import { evaluateAnswer } from '../utils/answerChecker';
 import { AccentKeyboard } from '../components/common/AccentKeyboard';
 import { Modal } from '../components/common/Modal';
+import { ConfettiCelebration } from '../components/common/ConfettiCelebration';
 import { MockTestSession, QuizQuestion, QuizResult } from '../types';
 
 export const MockTest: React.FC = () => {
@@ -414,6 +415,7 @@ export const MockTest: React.FC = () => {
   if (testResult) {
     return (
       <div className="max-w-4xl mx-auto space-y-8 pb-12 animate-in fade-in duration-200">
+        <ConfettiCelebration active={true} type="unit" />
         <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 mx-auto flex items-center justify-center">
             <Trophy className="w-8 h-8" />

@@ -19,6 +19,11 @@ import { soundManager } from '../utils/sound';
 import { evaluateAnswer } from '../utils/answerChecker';
 import { PacoMascot, MascotMood } from '../components/common/PacoMascot';
 import { AccentKeyboard } from '../components/common/AccentKeyboard';
+import {
+  ConfettiCelebration,
+  fireLessonCompleteConfetti,
+  fireUnitTestConfetti,
+} from '../components/common/ConfettiCelebration';
 import { VocabularyItem } from '../types';
 
 type QuestionType =
@@ -233,7 +238,8 @@ export const LessonRunner: React.FC = () => {
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
-      // Lesson complete!
+      // Lesson / Unit Test complete!
+      const isUnitTest = lessonData.type === 'checkpoint' || lessonData.type === 'test';
       const isPerfect = mistakesMade === 0;
       const totalXp = lessonData.xpReward + (isPerfect ? 15 : 0);
       completeLesson(lessonData.id, totalXp);
@@ -242,8 +248,14 @@ export const LessonRunner: React.FC = () => {
       if (settings.soundEffects) {
         soundManager.playFanfare();
       }
+
+      // Trigger canvas-based confetti
       try {
-        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+        if (isUnitTest) {
+          fireUnitTestConfetti();
+        } else {
+          fireLessonCompleteConfetti();
+        }
       } catch {
         // ignore
       }
@@ -275,16 +287,18 @@ export const LessonRunner: React.FC = () => {
 
   // VICTORY SUMMARY SCREEN
   if (isLessonFinished) {
+    const isUnitTest = lessonData.type === 'checkpoint' || lessonData.type === 'test';
     const isPerfect = mistakesMade === 0;
     const earnedXp = lessonData.xpReward + (isPerfect ? 15 : 0);
 
     return (
       <div className="max-w-md mx-auto text-center py-12 px-4 space-y-6 animate-in zoom-in-95 duration-200">
+        <ConfettiCelebration active={true} type={isUnitTest ? 'unit' : 'lesson'} />
         <PacoMascot size="xl" mood="champion" />
 
         <div className="space-y-1">
           <h2 className="text-3xl font-black text-[#FFC800] tracking-tight">
-            Lesson Complete!
+            {isUnitTest ? '🏆 Unit Test Mastered!' : '🎉 Lesson Complete!'}
           </h2>
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             {lessonData.title} • {lessonData.subtitle}

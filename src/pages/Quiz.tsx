@@ -20,6 +20,7 @@ import { soundManager } from '../utils/sound';
 import { evaluateAnswer } from '../utils/answerChecker';
 import { AccentKeyboard } from '../components/common/AccentKeyboard';
 import { ProgressBar } from '../components/common/ProgressBar';
+import { ConfettiCelebration } from '../components/common/ConfettiCelebration';
 import {
   CategoryId,
   DifficultyLevel,
@@ -325,6 +326,10 @@ export const Quiz: React.FC = () => {
   if (finalResult) {
     return (
       <div className="max-w-3xl mx-auto space-y-8 pb-12 animate-in fade-in duration-200">
+        <ConfettiCelebration
+          active={true}
+          type={finalResult.accuracy >= 85 ? 'unit' : 'lesson'}
+        />
         <div className="p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-lg text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
             <Trophy className="w-7 h-7" />

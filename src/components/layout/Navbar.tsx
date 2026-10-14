@@ -3,10 +3,20 @@ import { Link } from 'react-router-dom';
 import { Flame, Sparkles, Heart, Plus, Infinity as InfinityIcon } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PacoMascot } from '../common/PacoMascot';
+import { FireFlame } from '../common/FireFlame';
 import { Modal } from '../common/Modal';
 
 export const Navbar: React.FC = () => {
-  const { stats, hearts, maxHearts, refillHeartsWithXp, settings, updateSettings } = useApp();
+  const {
+    stats,
+    streakDays,
+    isDailyGoalAchieved,
+    hearts,
+    maxHearts,
+    refillHeartsWithXp,
+    settings,
+    updateSettings,
+  } = useApp();
   const [showHeartModal, setShowHeartModal] = useState(false);
 
   return (
@@ -46,11 +56,20 @@ export const Navbar: React.FC = () => {
 
             {/* Streak */}
             <div
-              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#FFF5E5] dark:bg-amber-950/40 border-2 border-[#FFD280] dark:border-amber-800/60 text-[#FF9600] font-black text-xs"
-              title={`${stats.streakDays} Day Learning Streak`}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border-2 font-black text-xs transition-all ${
+                isDailyGoalAchieved
+                  ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-[#FF9600] shadow-2xs ring-2 ring-amber-400/20'
+                  : 'bg-[#FFF5E5] dark:bg-amber-950/40 border-[#FFD280] dark:border-amber-800/60 text-[#FF9600]'
+              }`}
+              title={`${streakDays} Day Learning Streak${isDailyGoalAchieved ? ' • Daily Goal Met! 🔥' : ''}`}
             >
-              <Flame className="w-4 h-4 fill-[#FF9600] text-[#FF9600] animate-bounce" />
-              <span className="font-mono text-sm">{stats.streakDays}</span>
+              <FireFlame
+                size="xs"
+                isBurning={true}
+                isGoalAchieved={isDailyGoalAchieved}
+                showSparks={false}
+              />
+              <span className="font-mono text-sm">{streakDays}</span>
             </div>
 
             {/* XP */}

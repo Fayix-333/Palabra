@@ -47,6 +47,7 @@ export const DEFAULT_STATS: UserStats = {
   totalStudyTimeMinutes: 0,
   dailyProgress: {},
   dailyQuests: {},
+  goalAchievedDates: [],
 };
 
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
