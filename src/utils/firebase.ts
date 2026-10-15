@@ -14,6 +14,12 @@ import {
   setDoc,
   getDoc,
   getDocFromServer,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  limit,
+  onSnapshot,
   Firestore,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -42,6 +48,16 @@ export interface FirestoreErrorInfo {
       email?: string | null;
     }[];
   };
+}
+
+export interface BroadcastMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  type: 'login' | 'milestone' | 'lesson';
+  message: string;
+  timestamp: number;
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
@@ -143,5 +159,61 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<Record
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, path);
     return null;
+  }
+}
+
+export async function broadcastUserLogin(user: User): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  try {
+    const broadcastsCol = collection(db, 'broadcasts');
+    const name = user.displayName || user.email?.split('@')[0] || 'A fellow learner';
+    await addDoc(broadcastsCol, {
+      userId: user.uid,
+      userName: name,
+      userPhoto: user.photoURL || '',
+      type: 'login',
+      message: `${name} just signed in to study Spanish!`,
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    console.warn('Could not broadcast user login:', err);
+  }
+}
+
+export function subscribeToBroadcasts(
+  callback: (broadcasts: BroadcastMessage[]) => void
+): () => void {
+  if (!isFirebaseConfigured || !db) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const broadcastsCol = collection(db, 'broadcasts');
+    const q = query(broadcastsCol, orderBy('timestamp', 'desc'), limit(20));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items: BroadcastMessage[] = [];
+        snapshot.forEach((itemDoc) => {
+          const data = itemDoc.data();
+          items.push({
+            id: itemDoc.id,
+            userId: data.userId || '',
+            userName: data.userName || 'Learner',
+            userPhoto: data.userPhoto || '',
+            type: data.type || 'login',
+            message: data.message || 'A learner signed in',
+            timestamp: data.timestamp || Date.now(),
+          });
+        });
+        callback(items);
+      },
+      (error) => {
+        console.warn('Broadcasts subscription notice:', error);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to listen to broadcasts:', err);
+    return () => {};
   }
 }

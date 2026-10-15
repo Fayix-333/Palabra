@@ -45,7 +45,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full bg-white dark:bg-slate-900 border-b-2 border-slate-200 dark:border-slate-800">
+      <header className="sticky top-0 z-40 w-full ios27-glass border-b border-white/40 dark:border-white/10 backdrop-blur-2xl">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           {/* Brand identity */}
           <Link to="/" className="flex items-center gap-2.5 group">

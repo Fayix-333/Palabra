@@ -98,8 +98,8 @@ export const Profile: React.FC = () => {
         </Link>
       </div>
 
-      {/* Google Login & Firebase Cloud Save Card */}
-      <div className="p-6 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs">
+      {/* Google Login & Firebase Cloud Save Card (iOS 27 Liquid Glass) */}
+      <div className="p-6 ios27-glass-card shadow-xl">
         {user ? (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">

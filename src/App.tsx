@@ -11,6 +11,9 @@ import { Sidebar } from './components/layout/Sidebar';
 import { RightSidebar } from './components/layout/RightSidebar';
 import { MobileNav } from './components/layout/MobileNav';
 
+import { LiquidBackground } from './components/common/LiquidBackground';
+import { IOS27DynamicIsland } from './components/common/IOS27DynamicIsland';
+
 // Pages
 import { LearningHome } from './pages/LearningHome';
 import { LessonRunner } from './pages/LessonRunner';
@@ -32,7 +35,9 @@ const AppContent: React.FC = () => {
   const isFocusMode = isLessonRunning || isMockTest;
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F7F7] dark:bg-[#131F24] text-slate-800 dark:text-slate-100 transition-colors font-sans">
+    <div className="min-h-screen flex flex-col bg-[#F7F7F7] dark:bg-[#131F24] text-slate-800 dark:text-slate-100 transition-colors font-sans relative overflow-x-hidden">
+      <LiquidBackground />
+      <IOS27DynamicIsland />
       {!isLessonRunning && <Navbar />}
 
       <div className="flex-1 flex max-w-7xl w-full mx-auto">

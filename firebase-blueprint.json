@@ -33,18 +33,58 @@
           "type": "array",
           "description": "15-day preparation plan checkpoints"
         },
+        "achievements": {
+          "type": "array",
+          "description": "User unlocked achievements"
+        },
         "updatedAt": {
           "type": "number",
           "description": "Epoch timestamp of last synchronization"
         }
       },
       "required": ["userId"]
+    },
+    "LoginBroadcast": {
+      "title": "LoginBroadcast",
+      "description": "Public broadcast notifications when any user logs in or achieves a milestone",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "User ID of the member who logged in"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Display name of the learner"
+        },
+        "userPhoto": {
+          "type": "string",
+          "description": "Optional avatar URL"
+        },
+        "type": {
+          "type": "string",
+          "description": "Broadcast event type, e.g. login or milestone"
+        },
+        "message": {
+          "type": "string",
+          "description": "Notification message text"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Creation timestamp in milliseconds"
+        }
+      },
+      "required": ["userId", "userName", "message", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "Individual student profile and progress storage"
+    },
+    "/broadcasts/{broadcastId}": {
+      "schema": "LoginBroadcast",
+      "description": "Real-time broadcasts shared with all other users who use the app"
     }
   }
 }

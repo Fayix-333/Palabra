@@ -53,8 +53,8 @@ export const LearningHome: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto space-y-8 pb-20 select-none">
-      {/* Top Course Card */}
-      <div className="p-5 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-2">
+      {/* Top Course Card (iOS 27 Liquid Glass) */}
+      <div className="p-6 rounded-[28px] ios27-glass-card shadow-xl space-y-3">
         <div className="flex items-center justify-between text-xs font-black text-slate-400">
           <span className="uppercase tracking-wider text-[#58CC02]">
             DHIU Sibaq • Competition Code TN.31

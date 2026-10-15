@@ -14,9 +14,16 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // User progress and profile: each user can only read and write their own data
+    // User progress and profile: each user can read and write their own data
     match /users/{userId} {
       allow read, write: if isOwner(userId);
+    }
+
+    // Shared real-time broadcasts: notify all other users when a user logs in or studies
+    match /broadcasts/{broadcastId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId;
     }
   }
 }

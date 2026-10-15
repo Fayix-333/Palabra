@@ -243,6 +243,22 @@ export class LocalStorageManager {
     }
   }
 
+  static saveQuizHistory(history: QuizResult[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.QUIZ_HISTORY, JSON.stringify(history.slice(0, 100)));
+    } catch {
+      // Storage unavailable
+    }
+  }
+
+  static saveMockHistory(history: QuizResult[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.MOCK_HISTORY, JSON.stringify(history.slice(0, 50)));
+    } catch {
+      // Storage unavailable
+    }
+  }
+
   static getAchievements(): Achievement[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);

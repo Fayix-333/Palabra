@@ -31,6 +31,7 @@ import {
   isFirebaseConfigured,
   loginWithGoogle,
   logoutUser,
+  broadcastUserLogin,
 } from '../utils/firebase';
 import { soundManager } from '../utils/sound';
 
@@ -153,16 +154,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const cloudData = await fetchUserDataFromFirestore(authUser.uid);
           if (cloudData) {
             if (cloudData.settings) {
-              setSettings((prev) => ({ ...prev, ...(cloudData.settings as UserSettings) }));
+              setSettings((prev) => {
+                const merged: UserSettings = {
+                  ...prev,
+                  ...(cloudData.settings as UserSettings),
+                  studentName:
+                    authUser.displayName ||
+                    (cloudData.settings as UserSettings)?.studentName ||
+                    prev.studentName,
+                };
+                LocalStorageManager.saveSettings(merged);
+                return merged;
+              });
             }
             if (cloudData.stats) {
-              setStats((prev) => ({ ...prev, ...(cloudData.stats as UserStats) }));
+              const cs = cloudData.stats as UserStats;
+              setStats((prev) => {
+                const mergedLessonIds = Array.from(
+                  new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
+                );
+                const merged: UserStats = {
+                  ...prev,
+                  ...cs,
+                  xp: Math.max(prev.xp || 0, cs.xp || 0),
+                  streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
+                  longestStreak: Math.max(prev.longestStreak || 1, cs.longestStreak || 1),
+                  completedLessonIds: mergedLessonIds,
+                  dailyProgress: { ...(prev.dailyProgress || {}), ...(cs.dailyProgress || {}) },
+                  dailyQuests: { ...(prev.dailyQuests || {}), ...(cs.dailyQuests || {}) },
+                  goalAchievedDates: Array.from(
+                    new Set([...(prev.goalAchievedDates || []), ...(cs.goalAchievedDates || [])])
+                  ),
+                };
+                LocalStorageManager.saveStats(merged);
+                return merged;
+              });
             }
             if (cloudData.wordProgress) {
-              setWordProgress((prev) => ({
-                ...prev,
-                ...(cloudData.wordProgress as Record<string, WordProgress>),
-              }));
+              const cp = cloudData.wordProgress as Record<string, WordProgress>;
+              setWordProgress((prev) => {
+                const merged: Record<string, WordProgress> = { ...prev };
+                Object.entries(cp).forEach(([id, wp]) => {
+                  const cur = merged[id];
+                  if (!cur) {
+                    merged[id] = wp;
+                  } else {
+                    merged[id] = {
+                      ...cur,
+                      ...wp,
+                      timesSeen: Math.max(cur.timesSeen, wp.timesSeen),
+                      timesCorrect: Math.max(cur.timesCorrect, wp.timesCorrect),
+                      mastered: cur.mastered || wp.mastered,
+                      isFavorite: cur.isFavorite || wp.isFavorite,
+                    };
+                  }
+                });
+                LocalStorageManager.saveWordProgress(merged);
+                return merged;
+              });
+            }
+            if (cloudData.quizHistory && Array.isArray(cloudData.quizHistory)) {
+              setQuizHistory(cloudData.quizHistory as QuizResult[]);
+              LocalStorageManager.saveQuizHistory(cloudData.quizHistory as QuizResult[]);
+            }
+            if (cloudData.mockHistory && Array.isArray(cloudData.mockHistory)) {
+              setMockHistory(cloudData.mockHistory as QuizResult[]);
+              LocalStorageManager.saveMockHistory(cloudData.mockHistory as QuizResult[]);
+            }
+            if (cloudData.studyPlan && Array.isArray(cloudData.studyPlan)) {
+              setStudyPlan(cloudData.studyPlan as DayPlanItem[]);
+              LocalStorageManager.saveStudyPlan(cloudData.studyPlan as DayPlanItem[]);
+            }
+            if (cloudData.achievements && Array.isArray(cloudData.achievements)) {
+              setAchievements(cloudData.achievements as Achievement[]);
+              LocalStorageManager.saveAchievements(cloudData.achievements as Achievement[]);
             }
           }
           setCloudSyncStatus('synced');
@@ -737,58 +802,157 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   }, []);
 
+  const restoreAndPersistUserData = useCallback(
+    (cloudData: Record<string, unknown>, authUser: User) => {
+      // 1. Settings
+      if (cloudData.settings) {
+        setSettings((prev) => {
+          const merged: UserSettings = {
+            ...prev,
+            ...(cloudData.settings as UserSettings),
+            studentName:
+              authUser.displayName ||
+              (cloudData.settings as UserSettings)?.studentName ||
+              prev.studentName,
+          };
+          LocalStorageManager.saveSettings(merged);
+          return merged;
+        });
+      }
+
+      // 2. Stats & Lessons
+      if (cloudData.stats) {
+        const cs = cloudData.stats as UserStats;
+        setStats((prev) => {
+          const mergedLessonIds = Array.from(
+            new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
+          );
+          const merged: UserStats = {
+            ...prev,
+            ...cs,
+            xp: Math.max(prev.xp || 0, cs.xp || 0),
+            streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
+            longestStreak: Math.max(prev.longestStreak || 1, cs.longestStreak || 1),
+            completedLessonIds: mergedLessonIds,
+            dailyProgress: { ...(prev.dailyProgress || {}), ...(cs.dailyProgress || {}) },
+            dailyQuests: { ...(prev.dailyQuests || {}), ...(cs.dailyQuests || {}) },
+            goalAchievedDates: Array.from(
+              new Set([...(prev.goalAchievedDates || []), ...(cs.goalAchievedDates || [])])
+            ),
+          };
+          LocalStorageManager.saveStats(merged);
+          return merged;
+        });
+      }
+
+      // 3. Word Progress
+      if (cloudData.wordProgress) {
+        const cp = cloudData.wordProgress as Record<string, WordProgress>;
+        setWordProgress((prev) => {
+          const merged: Record<string, WordProgress> = { ...prev };
+          Object.entries(cp).forEach(([id, wp]) => {
+            const cur = merged[id];
+            if (!cur) {
+              merged[id] = wp;
+            } else {
+              merged[id] = {
+                ...cur,
+                ...wp,
+                timesSeen: Math.max(cur.timesSeen, wp.timesSeen),
+                timesCorrect: Math.max(cur.timesCorrect, wp.timesCorrect),
+                mastered: cur.mastered || wp.mastered,
+                isFavorite: cur.isFavorite || wp.isFavorite,
+              };
+            }
+          });
+          LocalStorageManager.saveWordProgress(merged);
+          return merged;
+        });
+      }
+
+      // 4. Quiz History
+      if (cloudData.quizHistory && Array.isArray(cloudData.quizHistory)) {
+        setQuizHistory(cloudData.quizHistory as QuizResult[]);
+        LocalStorageManager.saveQuizHistory(cloudData.quizHistory as QuizResult[]);
+      }
+
+      // 5. Mock History
+      if (cloudData.mockHistory && Array.isArray(cloudData.mockHistory)) {
+        setMockHistory(cloudData.mockHistory as QuizResult[]);
+        LocalStorageManager.saveMockHistory(cloudData.mockHistory as QuizResult[]);
+      }
+
+      // 6. Study Plan
+      if (cloudData.studyPlan && Array.isArray(cloudData.studyPlan)) {
+        setStudyPlan(cloudData.studyPlan as DayPlanItem[]);
+        LocalStorageManager.saveStudyPlan(cloudData.studyPlan as DayPlanItem[]);
+      }
+
+      // 7. Achievements
+      if (cloudData.achievements && Array.isArray(cloudData.achievements)) {
+        setAchievements(cloudData.achievements as Achievement[]);
+        LocalStorageManager.saveAchievements(cloudData.achievements as Achievement[]);
+      }
+    },
+    []
+  );
+
   const manualCloudSync = useCallback(async () => {
     if (!user || !isFirebaseConfigured) return;
     try {
       setCloudSyncStatus('syncing');
       await syncUserDataToFirestore(user.uid, {
+        userId: user.uid,
         settings,
         stats,
         wordProgress,
-        quizHistory: quizHistory.slice(0, 30),
-        mockHistory: mockHistory.slice(0, 20),
+        quizHistory: quizHistory.slice(0, 50),
+        mockHistory: mockHistory.slice(0, 30),
         studyPlan,
+        achievements,
+        updatedAt: Date.now(),
       });
       setCloudSyncStatus('synced');
     } catch {
       setCloudSyncStatus('error');
     }
-  }, [mockHistory, quizHistory, settings, stats, studyPlan, user, wordProgress]);
+  }, [achievements, mockHistory, quizHistory, settings, stats, studyPlan, user, wordProgress]);
+
+  // Debounced auto-sync to cloud when logged in
+  useEffect(() => {
+    if (!user || !isFirebaseConfigured) return;
+    const timer = setTimeout(() => {
+      setCloudSyncStatus('syncing');
+      syncUserDataToFirestore(user.uid, {
+        userId: user.uid,
+        settings,
+        stats,
+        wordProgress,
+        quizHistory: quizHistory.slice(0, 50),
+        mockHistory: mockHistory.slice(0, 30),
+        studyPlan,
+        achievements,
+        updatedAt: Date.now(),
+      })
+        .then(() => setCloudSyncStatus('synced'))
+        .catch(() => setCloudSyncStatus('error'));
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [user, stats, wordProgress, quizHistory, mockHistory, studyPlan, achievements, settings]);
 
   const signInWithGoogle = useCallback(async () => {
     try {
       setCloudSyncStatus('syncing');
       const authUser = await loginWithGoogle();
       if (authUser) {
-        // Load or merge cloud data
+        setUser(authUser);
+        // Load cloud data and persist to localStorage
         const cloudData = await fetchUserDataFromFirestore(authUser.uid);
         if (cloudData) {
-          if (cloudData.settings) {
-            setSettings((prev) => ({
-              ...prev,
-              ...(cloudData.settings as UserSettings),
-              studentName: authUser.displayName || prev.studentName,
-            }));
-          }
-          if (cloudData.stats) {
-            const cs = cloudData.stats as UserStats;
-            setStats((prev) => ({
-              ...prev,
-              xp: Math.max(prev.xp, cs.xp || 0),
-              streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
-              completedLessonIds: Array.from(
-                new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
-              ),
-            }));
-          }
-          if (cloudData.wordProgress) {
-            setWordProgress((prev) => ({
-              ...prev,
-              ...(cloudData.wordProgress as Record<string, WordProgress>),
-            }));
-          }
+          restoreAndPersistUserData(cloudData, authUser);
         } else {
-          // Sync existing local progress to fresh cloud account
+          // Initialize new cloud account with existing progress
           await syncUserDataToFirestore(authUser.uid, {
             userId: authUser.uid,
             settings: {
@@ -797,11 +961,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             },
             stats,
             wordProgress,
-            quizHistory: quizHistory.slice(0, 30),
-            mockHistory: mockHistory.slice(0, 20),
+            quizHistory: quizHistory.slice(0, 50),
+            mockHistory: mockHistory.slice(0, 30),
             studyPlan,
+            achievements,
+            updatedAt: Date.now(),
           });
         }
+
+        // Broadcast to all other learners in real time!
+        await broadcastUserLogin(authUser);
         setCloudSyncStatus('synced');
       }
     } catch (err) {
@@ -809,13 +978,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCloudSyncStatus('error');
       throw err;
     }
-  }, [mockHistory, quizHistory, settings, stats, studyPlan, wordProgress]);
+  }, [achievements, mockHistory, quizHistory, restoreAndPersistUserData, settings, stats, studyPlan, wordProgress]);
 
   const signOutUser = useCallback(async () => {
+    // Before signing out, flush all latest progress to Firestore to guarantee ZERO data loss!
+    if (user && isFirebaseConfigured) {
+      try {
+        setCloudSyncStatus('syncing');
+        await syncUserDataToFirestore(user.uid, {
+          userId: user.uid,
+          settings,
+          stats,
+          wordProgress,
+          quizHistory: quizHistory.slice(0, 50),
+          mockHistory: mockHistory.slice(0, 30),
+          studyPlan,
+          achievements,
+          updatedAt: Date.now(),
+        });
+      } catch (err) {
+        console.warn('Pre-signout sync warning:', err);
+      }
+    }
+
     await logoutUser();
     setUser(null);
     setCloudSyncStatus('idle');
-  }, []);
+  }, [achievements, mockHistory, quizHistory, settings, stats, studyPlan, user, wordProgress]);
 
   const resetAllProgress = useCallback(() => {
     LocalStorageManager.resetAll();
