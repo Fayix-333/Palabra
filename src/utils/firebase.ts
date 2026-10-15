@@ -60,6 +60,15 @@ export interface BroadcastMessage {
   timestamp: number;
 }
 
+export interface ChatMessage {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  message: string;
+  timestamp: number;
+}
+
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -214,6 +223,60 @@ export function subscribeToBroadcasts(
     );
   } catch (err) {
     console.warn('Failed to listen to broadcasts:', err);
+    return () => {};
+  }
+}
+
+export async function sendChatMessage(user: User, messageText: string): Promise<void> {
+  if (!isFirebaseConfigured || !db || !messageText.trim()) return;
+  try {
+    const chatCol = collection(db, 'chats');
+    const name = user.displayName || user.email?.split('@')[0] || 'Learner';
+    await addDoc(chatCol, {
+      userId: user.uid,
+      userName: name,
+      userPhoto: user.photoURL || '',
+      message: messageText.trim(),
+      timestamp: Date.now(),
+    });
+  } catch (err) {
+    console.warn('Could not send chat message:', err);
+  }
+}
+
+export function subscribeToChatMessages(
+  callback: (messages: ChatMessage[]) => void
+): () => void {
+  if (!isFirebaseConfigured || !db) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const chatCol = collection(db, 'chats');
+    const q = query(chatCol, orderBy('timestamp', 'asc'), limit(50));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items: ChatMessage[] = [];
+        snapshot.forEach((itemDoc) => {
+          const data = itemDoc.data();
+          items.push({
+            id: itemDoc.id,
+            userId: data.userId || '',
+            userName: data.userName || 'Learner',
+            userPhoto: data.userPhoto || '',
+            message: data.message || '',
+            timestamp: data.timestamp || Date.now(),
+          });
+        });
+        callback(items);
+      },
+      (error) => {
+        console.warn('Chat subscription notice:', error);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to listen to chat messages:', err);
     return () => {};
   }
 }

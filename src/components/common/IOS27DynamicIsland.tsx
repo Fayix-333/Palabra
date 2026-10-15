@@ -101,32 +101,30 @@ export const IOS27DynamicIsland: React.FC = () => {
 
   return (
     <>
-      {/* Floating iOS 27 Dynamic Island Capsule at Top Center */}
-      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 transition-all duration-300 ease-out select-none">
-        <div
-          className={`relative overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-            isExpanded
-              ? 'w-[92vw] max-w-md p-3.5 rounded-[28px] bg-black/85 dark:bg-black/90 text-white shadow-2xl backdrop-blur-2xl border border-white/20'
-              : 'px-4 py-1.5 rounded-full bg-black/80 dark:bg-black/85 text-white/90 shadow-lg backdrop-blur-xl border border-white/15 cursor-pointer hover:bg-black/90 hover:scale-105'
-          }`}
-          onClick={() => {
-            if (!isExpanded) {
-              setShowHistoryModal(true);
-            }
-          }}
-        >
-          {/* Specular sheen effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none -translate-x-full animate-[liquid-sheen_8s_infinite]" />
+      {/* Floating iOS 27 Dynamic Island Notification Banner (Appears smoothly when a learner logs in) */}
+      <div
+        className={`fixed top-3 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] select-none ${
+          isExpanded && activeAlert
+            ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto'
+            : '-translate-y-24 opacity-0 scale-95 pointer-events-none'
+        }`}
+      >
+        {activeAlert && (
+          <div
+            className="w-[92vw] max-w-md p-3.5 rounded-[28px] bg-black/85 dark:bg-black/90 text-white shadow-2xl backdrop-blur-2xl border border-white/20 relative overflow-hidden ios27-liquid-specular"
+            onClick={() => setShowHistoryModal(true)}
+          >
+            {/* Specular sheen effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none -translate-x-full animate-[liquid-sheen_8s_infinite]" />
 
-          {isExpanded && activeAlert ? (
-            /* Expanded Dynamic Island Notification */
+            {/* Expanded Dynamic Island Notification */}
             <div className="flex items-center gap-3 relative z-10">
-              <div className="relative">
+              <div className="relative shrink-0">
                 {activeAlert.userPhoto ? (
                   <img
                     src={activeAlert.userPhoto}
                     alt={activeAlert.userName}
-                    className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-400/80"
+                    className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-400/80 shadow-md"
                   />
                 ) : (
                   <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-emerald-500 to-sky-400 flex items-center justify-center text-white font-bold text-base shadow-inner">
@@ -149,7 +147,7 @@ export const IOS27DynamicIsland: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={(e) => {
@@ -167,27 +165,14 @@ export const IOS27DynamicIsland: React.FC = () => {
                     setIsExpanded(false);
                   }}
                   className="p-1 rounded-full hover:bg-white/15 text-white/60 hover:text-white transition-colors"
+                  aria-label="Dismiss notification"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
-          ) : (
-            /* Compact Capsule pill */
-            <div className="flex items-center gap-2 text-xs font-bold">
-              <span className="flex items-center gap-1.5 text-emerald-300 text-[11px]">
-                <Users className="w-3 h-3" />
-                <span>{broadcasts.length > 0 ? `${broadcasts.length} Active` : 'Community'}</span>
-              </span>
-              {cloudSyncStatus === 'synced' && (
-                <span className="text-emerald-400 text-[10px] hidden sm:inline-flex items-center gap-0.5">
-                  <Cloud className="w-3 h-3" />
-                  <span>Synced</span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Community Activity Feed Modal (iOS 27 Liquid Glass modal) */}

@@ -75,6 +75,34 @@
         }
       },
       "required": ["userId", "userName", "message", "timestamp"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Real-time chat messages between Firebase connected learners",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Sender User ID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Sender Name"
+        },
+        "userPhoto": {
+          "type": "string",
+          "description": "Sender avatar URL"
+        },
+        "message": {
+          "type": "string",
+          "description": "Text message content"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Epoch timestamp"
+        }
+      },
+      "required": ["userId", "userName", "message", "timestamp"]
     }
   },
   "firestore": {
@@ -85,6 +113,10 @@
     "/broadcasts/{broadcastId}": {
       "schema": "LoginBroadcast",
       "description": "Real-time broadcasts shared with all other users who use the app"
+    },
+    "/chats/{chatId}": {
+      "schema": "ChatMessage",
+      "description": "Real-time chat room for connected learners"
     }
   }
 }

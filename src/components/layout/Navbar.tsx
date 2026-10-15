@@ -9,11 +9,13 @@ import {
   Cloud,
   Check,
   User as UserIcon,
+  MessageSquare,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PacoMascot } from '../common/PacoMascot';
 import { FireFlame } from '../common/FireFlame';
 import { Modal } from '../common/Modal';
+import { ChatModal } from '../common/ChatModal';
 
 export const Navbar: React.FC = () => {
   const {
@@ -30,6 +32,7 @@ export const Navbar: React.FC = () => {
     cloudSyncStatus,
   } = useApp();
   const [showHeartModal, setShowHeartModal] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleSignIn = async () => {
@@ -123,6 +126,17 @@ export const Navbar: React.FC = () => {
               {!settings.unlimitedHearts && hearts < maxHearts && (
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
               )}
+            </button>
+
+            {/* Chat Room Button */}
+            <button
+              type="button"
+              onClick={() => setShowChatModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#E5F6FF] dark:bg-sky-950/40 border-2 border-[#1CB0F6] text-[#1CB0F6] font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-2xs"
+              title="Open Sibaq Live Learner Chat"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="hidden sm:inline">Chat</span>
             </button>
 
             {/* Google Login / Profile Avatar */}
@@ -237,6 +251,9 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Chat Room Modal */}
+      <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} />
     </>
   );
 };

@@ -1021,7 +1021,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const totalWordsCount = VOCABULARY_DATABASE.length;
 
   const totalWordsLearned = useMemo(() => {
-    return Object.values(wordProgress).filter((w) => w.timesSeen > 0).length;
+    return Object.values(wordProgress).filter((w) => w.timesCorrect > 0).length;
   }, [wordProgress]);
 
   const totalWordsMastered = useMemo(() => {
