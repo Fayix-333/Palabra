@@ -31,7 +31,6 @@ import {
 import { VocabularyItem } from '../types';
 
 type LessonStepType =
-  | 'teach_intro'
   | 'translate_choice'
   | 'listen_type'
   | 'write_translation'
@@ -108,16 +107,7 @@ export const LessonRunner: React.FC = () => {
 
       const explanation = `"${item.spanish}" translates to "${item.english}". Practice using it naturally in Spanish conversation.`;
 
-      // 1. STEP 1: DUOLINGO TEACH STEP ("First says this is for this")
-      generatedSteps.push({
-        id: `teach-${vIdx}-${item.id}`,
-        type: 'teach_intro',
-        vocab: item,
-        explanation,
-        grammarTip,
-      });
-
-      // 2. STEP 2: IMMEDIATE PRACTICE QUESTIONS TESTING THIS CONCEPT
+      // Immediate practice questions testing this concept
       // Distractors for choice
       const otherVocabs = VOCABULARY_DATABASE.filter((v) => v.id !== item.id);
       const shuffledOthers = [...otherVocabs].sort(() => 0.5 - Math.random());
@@ -196,8 +186,8 @@ export const LessonRunner: React.FC = () => {
       setAvailableTiles([...currentStep.wordTiles]);
     }
 
-    // Auto-play audio when teaching or during listening challenges
-    if (currentStep.type === 'teach_intro' || currentStep.type === 'listen_type') {
+    // Auto-play audio during listening challenges
+    if (currentStep.type === 'listen_type') {
       try {
         soundManager.speakSpanish(currentStep.vocab.spanish, settings.speechRate);
       } catch {
@@ -299,9 +289,7 @@ export const LessonRunner: React.FC = () => {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (currentStep?.type === 'teach_intro') {
-        handleContinue();
-      } else if (feedbackStatus === 'idle') {
+      if (feedbackStatus === 'idle') {
         handleCheckAnswer();
       } else {
         handleContinue();
@@ -462,106 +450,9 @@ export const LessonRunner: React.FC = () => {
       </div>
 
       {/* ========================================================
-          STEP 1: DUOLINGO TEACH STEP ("First says this is for this")
+          QUESTIONS TESTING VOCABULARY
           ======================================================== */}
-      {currentStep.type === 'teach_intro' && (
-        <div className="my-auto py-6 space-y-6 animate-fade-in">
-          {/* iOS 27 Liquid Glass Study Card */}
-          <div className="ios27-glass-card p-6 sm:p-8 space-y-6">
-            {/* Header Badge */}
-            <div className="flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs font-black tracking-wide uppercase">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>New Concept & Word</span>
-              </span>
-              <span className="text-xs font-black text-slate-400">
-                Step {currentIndex + 1} of {steps.length}
-              </span>
-            </div>
-
-            {/* Teaching Presentation */}
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <PacoMascot size="md" mood="happy" />
-
-              <div className="flex-1 text-center sm:text-left space-y-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Spanish Word
-                </span>
-                <div className="flex items-center justify-center sm:justify-start gap-3">
-                  <h2 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tight">
-                    {currentStep.vocab.spanish}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={playAudio}
-                    className="p-3 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:scale-105 active:scale-95 transition-all border border-emerald-500/30"
-                    title="Listen to pronunciation"
-                  >
-                    <Volume2 className="w-6 h-6" />
-                  </button>
-                </div>
-                {currentStep.vocab.pronunciation && (
-                  <p className="text-xs font-mono font-bold text-slate-500 dark:text-slate-400">
-                    Pronounced: [{currentStep.vocab.pronunciation}]
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Translation & Duolingo "This is for this" Explanation */}
-            <div className="p-5 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-white/60 dark:border-white/10 shadow-sm space-y-3">
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-[#1CB0F6]" />
-                <h4 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">
-                  Meaning & Usage
-                </h4>
-              </div>
-              <p className="text-xl font-black text-slate-900 dark:text-white">
-                Means: <span className="text-[#1CB0F6]">"{currentStep.vocab.english}"</span>
-              </p>
-              <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                {currentStep.explanation}
-              </p>
-
-              {currentStep.grammarTip && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs font-bold">
-                  💡 <strong>Tip:</strong> {currentStep.grammarTip}
-                </div>
-              )}
-
-              {currentStep.vocab.examplePhrase && (
-                <div className="pt-2 border-t border-slate-200/50 dark:border-slate-700/50 text-xs">
-                  <span className="font-bold text-slate-400">Example in a sentence:</span>
-                  <p className="font-bold text-slate-800 dark:text-slate-200 mt-0.5">
-                    "{currentStep.vocab.examplePhrase}"
-                  </p>
-                  {currentStep.vocab.exampleTranslation && (
-                    <p className="text-slate-500 italic">
-                      "{currentStep.vocab.exampleTranslation}"
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Action button */}
-            <button
-              type="button"
-              onClick={handleContinue}
-              className="w-full py-4 rounded-2xl btn-ios27-primary text-base font-black flex items-center justify-center gap-2 shadow-lg"
-            >
-              <span>I GOT IT! TEST ME NOW</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================
-          STEP 2: IMMEDIATE QUESTIONS TESTING THIS CONCEPT
-          ======================================================== */}
-      {currentStep.type !== 'teach_intro' && (
-        <div className="my-auto py-6 space-y-6">
+      <div className="my-auto py-6 space-y-6">
           <div className="ios27-glass-card p-6 sm:p-8 space-y-6">
             {/* Header prompt */}
             <div className="space-y-2">
@@ -696,11 +587,9 @@ export const LessonRunner: React.FC = () => {
             )}
           </div>
         </div>
-      )}
 
       {/* BOTTOM ACTION & FEEDBACK DRAWER (iOS 27 Liquid Glass style) */}
-      {currentStep.type !== 'teach_intro' && (
-        <div
+      <div
           className={`fixed bottom-0 left-0 right-0 border-t transition-all p-4 sm:p-6 z-40 backdrop-blur-3xl ${
             feedbackStatus === 'correct'
               ? 'bg-emerald-50/90 dark:bg-emerald-950/90 border-emerald-500/50'
@@ -773,7 +662,6 @@ export const LessonRunner: React.FC = () => {
             )}
           </div>
         </div>
-      )}
 
       {/* Tip / Explanation Modal */}
       {showTipModal && (

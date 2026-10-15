@@ -18,7 +18,6 @@ import { useApp } from '../context/AppContext';
 import { LEARNING_UNITS, LessonNode } from '../data/units';
 import { PacoMascot } from '../components/common/PacoMascot';
 import { Modal } from '../components/common/Modal';
-import { GrammarSnippetBox } from '../components/common/GrammarSnippetBox';
 
 export const LearningHome: React.FC = () => {
   const navigate = useNavigate();
@@ -94,9 +93,6 @@ export const LearningHome: React.FC = () => {
           </Link>
         </div>
       </div>
-
-      {/* Daily Grammar Snippet Section */}
-      <GrammarSnippetBox />
 
       {/* 7 UNITS WINDING LEARNING PATH */}
       <div className="space-y-12">
