@@ -85,24 +85,63 @@ export const Quiz: React.FC = () => {
       );
       if (mistakeWords.length === 0) {
         setHadNoMistakesInitially(true);
-        // Fallback to full database shuffled if no mistakes recorded yet
         pool = [...VOCABULARY_DATABASE];
       } else {
         setHadNoMistakesInitially(false);
-        pool = mistakeWords;
-      }
-    } else if (mode === 'spelling_challenge' && categoryParam === 'all') {
-      // Accent Trainer / Spelling Master: filter or prioritize words with written accents or special letters
-      const accentFiltered = pool.filter((v) => /[áéíóúñÁÉÍÓÚÑ]/.test(v.spanish));
-      if (accentFiltered.length >= 10) {
-        pool = accentFiltered;
+        if (categoryParam !== 'all') {
+          const catMistakes = mistakeWords.filter((v) =>
+            categoryParam.startsWith('numbers') ? v.category === 'numbers' : v.category === categoryParam
+          );
+          pool = catMistakes.length > 0 ? catMistakes : mistakeWords;
+        } else {
+          pool = mistakeWords;
+        }
       }
     } else {
-      if (categoryParam !== 'all') {
-        pool = pool.filter((v) => v.category === categoryParam);
+      // Category & specialized sub-section filtering
+      if (categoryParam === 'numbers_0_20') {
+        pool = pool.filter(
+          (v) =>
+            v.category === 'numbers' &&
+            ['num-0', 'num-1', 'num-2', 'num-3', 'num-4', 'num-5', 'num-6', 'num-7', 'num-8', 'num-9',
+             'num-10', 'num-11', 'num-12', 'num-13', 'num-14', 'num-15', 'num-16', 'num-17', 'num-18', 'num-19', 'num-20'].includes(v.id)
+        );
+      } else if (categoryParam === 'numbers_21_100') {
+        pool = pool.filter(
+          (v) =>
+            v.category === 'numbers' &&
+            /^num-(2[1-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-9]|8[0-9]|9[0-9]|100)$/.test(v.id)
+        );
+      } else if (categoryParam === 'numbers_hundreds') {
+        pool = pool.filter(
+          (v) =>
+            v.category === 'numbers' &&
+            ['num-101', 'num-200', 'num-300', 'num-400', 'num-500', 'num-600', 'num-700', 'num-800',
+             'num-900', 'num-1000', 'num-2000', 'num-10000', 'num-100000', 'num-1000000', 'num-2000000'].includes(v.id)
+        );
+      } else if (categoryParam === 'numbers_accents') {
+        pool = pool.filter(
+          (v) => v.category === 'numbers' && (v.hasAccents || /[áéíóúñÁÉÍÓÚÑ]/.test(v.spanish))
+        );
+      } else if (categoryParam !== 'all') {
+        const targetCategory = categoryParam.startsWith('numbers') ? 'numbers' : categoryParam;
+        pool = pool.filter((v) => v.category === targetCategory);
       }
+
+      // Difficulty filtering
       if (difficultyParam !== 'all') {
-        pool = pool.filter((v) => v.difficulty === difficultyParam);
+        const diffFiltered = pool.filter((v) => v.difficulty === difficultyParam);
+        if (diffFiltered.length > 0) {
+          pool = diffFiltered;
+        }
+      }
+
+      // Mode accent filtering for spelling/accent master
+      if (mode === 'spelling_challenge') {
+        const accentFiltered = pool.filter((v) => /[áéíóúñÁÉÍÓÚÑ]/.test(v.spanish));
+        if (accentFiltered.length > 0) {
+          pool = accentFiltered;
+        }
       }
     }
 
@@ -117,7 +156,31 @@ export const Quiz: React.FC = () => {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    const selectedPool = pool.slice(0, Math.min(countParam, pool.length));
+    // Guarantee that we ALWAYS deliver exactly the question count requested (e.g. 50 questions)
+    let selectedPool: VocabularyItem[] = [];
+    if (pool.length >= countParam) {
+      selectedPool = pool.slice(0, countParam);
+    } else {
+      // When pool has fewer items than requested (e.g. 4 items, but user asked for 50 questions):
+      selectedPool = [...pool];
+
+      // 1. First backfill from the broader category (e.g. other numbers in numbers category)
+      const baseCategory = categoryParam.startsWith('numbers') ? 'numbers' : categoryParam;
+      if (baseCategory !== 'all') {
+        const remainingInCat = VOCABULARY_DATABASE.filter(
+          (v) => v.category === baseCategory && !selectedPool.some((p) => p.id === v.id)
+        ).sort(() => 0.5 - Math.random());
+        const needed = countParam - selectedPool.length;
+        selectedPool.push(...remainingInCat.slice(0, needed));
+      }
+
+      // 2. If still fewer than countParam, cycle through the pool so user gets full requested count (50 questions)
+      while (selectedPool.length < countParam && pool.length > 0) {
+        const shuffledCopy = [...pool].sort(() => 0.5 - Math.random());
+        const needed = countParam - selectedPool.length;
+        selectedPool.push(...shuffledCopy.slice(0, needed));
+      }
+    }
 
     // Construct questions based on mode
     const qTypeParam = searchParams.get('qType');
@@ -159,7 +222,7 @@ export const Quiz: React.FC = () => {
       }
 
       return {
-        id: `q-${index}-${vocab.id}`,
+        id: `q-${index}-${vocab.id}-${Math.random().toString(36).slice(2, 7)}`,
         vocab,
         direction: 'en_to_es',
         questionType: isMultipleChoice ? 'multiple_choice' : 'text_input',

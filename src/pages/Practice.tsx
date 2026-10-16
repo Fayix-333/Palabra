@@ -615,12 +615,21 @@ export const Practice: React.FC = () => {
                 onChange={(e) => setCustomCategory(e.target.value)}
                 className="w-full p-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-[#1CB0F6]"
               >
-                <option value="all">🌟 All 7 Syllabus Categories</option>
-                {CATEGORIES.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.spanishName})
-                  </option>
-                ))}
+                <option value="all">🌟 All 7 Syllabus Categories (216+ Words)</option>
+                <optgroup label="Core Syllabus Categories">
+                  {CATEGORIES.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.spanishName})
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Numbers Sub-Sections & Drills">
+                  <option value="numbers">🔢 Numbers (All 0 to 1,000,000)</option>
+                  <option value="numbers_0_20">🔢 Numbers: 0 to 20 (Foundations & dieciséis)</option>
+                  <option value="numbers_21_100">🔢 Numbers: 21 to 100 (Tens & Compounds)</option>
+                  <option value="numbers_hundreds">🔢 Numbers: Hundreds & Large Numbers (quinientos, millón)</option>
+                  <option value="numbers_accents">✨ Numbers: Accent Traps (dieciséis, veintidós, veintitrés, veintiséis)</option>
+                </optgroup>
               </select>
             </div>
 
@@ -635,7 +644,7 @@ export const Practice: React.FC = () => {
                 className="w-full p-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-[#1CB0F6]"
               >
                 <option value="mixed_quiz">🔀 Mixed Sprint (Multiple Choice + Typing)</option>
-                <option value="multiple_choice">🔘 Multiple Choice (1 of 4)</option>
+                <option value="multiple_choice">🔘 Multiple Choice (4 Choices Per Question)</option>
                 <option value="type_translation">⌨️ Typing Translation (Strict Spelling)</option>
                 <option value="speed_round">⚡ Rapid Speed Round (10s countdown)</option>
                 <option value="spelling_challenge">✨ Accent Master (Targeted Accents)</option>
@@ -645,25 +654,58 @@ export const Practice: React.FC = () => {
 
             {/* 3. Question Count */}
             <div className="space-y-2">
-              <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
-                Question Count: <span className="text-[#1CB0F6]">{customCount} Questions</span>
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                {[5, 10, 20, 30, 50].map((cnt) => (
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
+                  Question Count
+                </label>
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-[#E5F6FF] dark:bg-sky-950/60 text-[#1CB0F6]">
+                  {customCount} Questions
+                </span>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {[5, 10, 20, 30, 50, 75].map((cnt) => (
                   <button
                     key={cnt}
                     type="button"
                     onClick={() => setCustomCount(cnt)}
-                    className={`py-2.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                    className={`py-2 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                       customCount === cnt
-                        ? 'border-[#1CB0F6] bg-[#E5F6FF] dark:bg-sky-950/60 text-[#1CB0F6]'
-                        : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300'
+                        ? 'border-[#1CB0F6] bg-[#E5F6FF] dark:bg-sky-950/60 text-[#1CB0F6] shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
                     {cnt}
                   </button>
                 ))}
               </div>
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={customCount}
+                  onChange={(e) => setCustomCount(Math.max(1, Math.min(100, Number(e.target.value) || 20)))}
+                  className="flex-1 accent-[#1CB0F6] cursor-pointer"
+                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={customCount}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10);
+                      if (!isNaN(val)) setCustomCount(Math.max(1, Math.min(100, val)));
+                    }}
+                    className="w-16 p-1.5 text-center text-xs font-black rounded-lg border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:border-[#1CB0F6]"
+                  />
+                  <span className="text-[11px] font-bold text-slate-400">words</span>
+                </div>
+              </div>
+              <p className="text-[11px] font-semibold text-slate-400">
+                Guaranteed: Quiz delivers all {customCount} questions without cutting short.
+              </p>
             </div>
 
             {/* 4. Difficulty */}
