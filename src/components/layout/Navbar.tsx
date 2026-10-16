@@ -16,6 +16,7 @@ import { PacoMascot } from '../common/PacoMascot';
 import { FireFlame } from '../common/FireFlame';
 import { Modal } from '../common/Modal';
 import { ChatModal } from '../common/ChatModal';
+import { StreakModal } from '../common/StreakModal';
 
 export const Navbar: React.FC = () => {
   const {
@@ -32,6 +33,7 @@ export const Navbar: React.FC = () => {
     cloudSyncStatus,
   } = useApp();
   const [showHeartModal, setShowHeartModal] = useState(false);
+  const [showStreakModal, setShowStreakModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
 
@@ -81,14 +83,16 @@ export const Navbar: React.FC = () => {
               </span>
             </div>
 
-            {/* Streak */}
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border-2 font-black text-xs transition-all ${
+            {/* Streak Button */}
+            <button
+              type="button"
+              onClick={() => setShowStreakModal(true)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-xl border-2 font-black text-xs transition-all hover:scale-105 active:scale-95 cursor-pointer ${
                 isDailyGoalAchieved
                   ? 'bg-amber-50 dark:bg-amber-950/60 border-amber-400 text-[#FF9600] shadow-2xs ring-2 ring-amber-400/20'
                   : 'bg-[#FFF5E5] dark:bg-amber-950/40 border-[#FFD280] dark:border-amber-800/60 text-[#FF9600]'
               }`}
-              title={`${streakDays} Day Learning Streak${isDailyGoalAchieved ? ' • Daily Goal Met! 🔥' : ''}`}
+              title={`${streakDays} Day Learning Streak • Click to inspect or adjust streak`}
             >
               <FireFlame
                 size="xs"
@@ -97,7 +101,7 @@ export const Navbar: React.FC = () => {
                 showSparks={false}
               />
               <span className="font-mono text-sm">{streakDays}</span>
-            </div>
+            </button>
 
             {/* XP */}
             <div
@@ -254,6 +258,9 @@ export const Navbar: React.FC = () => {
 
       {/* Chat Room Modal */}
       <ChatModal isOpen={showChatModal} onClose={() => setShowChatModal(false)} />
+
+      {/* Streak Management & Details Modal */}
+      <StreakModal isOpen={showStreakModal} onClose={() => setShowStreakModal(false)} />
     </>
   );
 };

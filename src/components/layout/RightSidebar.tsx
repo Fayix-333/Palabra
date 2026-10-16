@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Trophy,
@@ -9,10 +9,12 @@ import {
   CalendarCheck,
   Zap,
   Sparkles,
+  Pencil,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PacoMascot } from '../common/PacoMascot';
 import { FireFlame } from '../common/FireFlame';
+import { StreakModal } from '../common/StreakModal';
 
 export const RightSidebar: React.FC = () => {
   const {
@@ -32,6 +34,7 @@ export const RightSidebar: React.FC = () => {
     user,
     signInWithGoogle,
   } = useApp();
+  const [showStreakModal, setShowStreakModal] = useState(false);
 
   // Generate 7-day week calendar (Mon to Sun)
   const weekDays = useMemo(() => {
@@ -102,16 +105,26 @@ export const RightSidebar: React.FC = () => {
             </div>
           </div>
 
-          {isDailyGoalAchieved && (
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={celebrateGoal}
-              className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-300 hover:scale-105 active:scale-95 transition-transform"
-              title="Click to trigger celebration confetti!"
+              onClick={() => setShowStreakModal(true)}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-[#FF9600] hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors"
+              title="Inspect or adjust daily streak"
             >
-              <Sparkles className="w-4 h-4" />
+              <Pencil className="w-3.5 h-3.5" />
             </button>
-          )}
+            {isDailyGoalAchieved && (
+              <button
+                type="button"
+                onClick={celebrateGoal}
+                className="p-1.5 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-300 hover:scale-105 active:scale-95 transition-transform"
+                title="Click to trigger celebration confetti!"
+              >
+                <Sparkles className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 7-Day Weekly Streak Tracker */}
@@ -413,6 +426,8 @@ export const RightSidebar: React.FC = () => {
           <ArrowRight className="w-3.5 h-3.5 text-[#58CC02]" />
         </Link>
       </div>
+
+      <StreakModal isOpen={showStreakModal} onClose={() => setShowStreakModal(false)} />
     </aside>
   );
 };

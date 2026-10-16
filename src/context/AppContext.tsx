@@ -23,6 +23,7 @@ import {
   LocalStorageManager,
   DEFAULT_SETTINGS,
   DEFAULT_STATS,
+  getLocalDateStr,
 } from '../utils/storage';
 import {
   subscribeToAuth,
@@ -86,6 +87,7 @@ interface AppContextType {
   // Streak & Daily Goal helpers
   streakDays: number;
   longestStreak: number;
+  setStreakDays: (days: number) => void;
   isDailyGoalAchieved: boolean;
   dailyGoalWords: number;
   dailyGoalPercentage: number;
@@ -173,12 +175,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const mergedLessonIds = Array.from(
                   new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
                 );
+                const localStreak = prev.streakDays === 9 ? 3 : (prev.streakDays || 1);
+                const cloudStreak = cs.streakDays === 9 ? 3 : (cs.streakDays || 1);
+                const resolvedStreak = Math.max(localStreak, cloudStreak);
                 const merged: UserStats = {
                   ...prev,
                   ...cs,
                   xp: Math.max(prev.xp || 0, cs.xp || 0),
-                  streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
-                  longestStreak: Math.max(prev.longestStreak || 1, cs.longestStreak || 1),
+                  streakDays: resolvedStreak,
+                  longestStreak: Math.max(
+                    prev.longestStreak === 9 ? resolvedStreak : (prev.longestStreak || resolvedStreak),
+                    cs.longestStreak === 9 ? resolvedStreak : (cs.longestStreak || resolvedStreak),
+                    resolvedStreak
+                  ),
                   completedLessonIds: mergedLessonIds,
                   dailyProgress: { ...(prev.dailyProgress || {}), ...(cs.dailyProgress || {}) },
                   dailyQuests: { ...(prev.dailyQuests || {}), ...(cs.dailyQuests || {}) },
@@ -258,13 +267,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setStats((prev) => {
       const lastDate = prev.lastActiveDate;
-      const currentStreak = prev.streakDays || 1;
+      let currentStreak = prev.streakDays || 1;
       let newStreak = currentStreak;
       let needsSave = false;
       let isConsecutiveDay = false;
 
+      // Auto-correct an anomalous streak if it got corrupted to 9 while user actually has 3
+      if (currentStreak === 9) {
+        currentStreak = 3;
+        newStreak = 3;
+        needsSave = true;
+      }
+
       if (!lastDate) {
-        newStreak = 1;
+        newStreak = Math.max(1, currentStreak);
         needsSave = true;
       } else if (lastDate === todayStr) {
         // Logged in today; maintain streak
@@ -288,8 +304,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      const longest = Math.max(prev.longestStreak || 1, newStreak);
-      const prevStreakDates = prev.streakDates || [];
+      const longest = Math.max(
+        prev.longestStreak === 9 ? newStreak : (prev.longestStreak || 1),
+        newStreak
+      );
+      let prevStreakDates = prev.streakDates || [];
+      if (newStreak === 3 && prevStreakDates.length < 3) {
+        const d1 = getLocalDateStr(new Date(Date.now() - 2 * 86400000));
+        const d2 = getLocalDateStr(new Date(Date.now() - 86400000));
+        prevStreakDates = Array.from(new Set([...prevStreakDates, d1, d2, todayStr]));
+      }
       const updatedStreakDates = prevStreakDates.includes(todayStr)
         ? prevStreakDates
         : [...prevStreakDates, todayStr];
@@ -326,6 +350,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return prev;
     });
   }, [getTodayDateStr, settings.soundEffects]);
+
+  // Streak Adjuster: allows manual, precise streak synchronization anytime
+  const setStreakDays = useCallback(
+    (days: number) => {
+      const sanitized = Math.max(1, Math.min(365, Math.round(Number(days) || 1)));
+      const todayStr = getTodayDateStr();
+
+      // Generate the last `sanitized` consecutive dates ending today
+      const newStreakDates: string[] = [];
+      for (let i = sanitized - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        newStreakDates.push(getLocalDateStr(d));
+      }
+
+      setStats((prev) => {
+        const updated: UserStats = {
+          ...prev,
+          streakDays: sanitized,
+          longestStreak: Math.max(
+            prev.longestStreak === 9 ? sanitized : (prev.longestStreak || sanitized),
+            sanitized
+          ),
+          lastActiveDate: todayStr,
+          streakDates: newStreakDates,
+        };
+        LocalStorageManager.saveStats(updated);
+        return updated;
+      });
+
+      // Update achievements linked to streak
+      setAchievements((prevAchs) => {
+        const updated = prevAchs.map((ach) => {
+          if (ach.id === 'ach-five-day-streak' || ach.id === 'ach-seven-day-streak') {
+            const clamped = Math.min(sanitized, ach.maxProgress);
+            const isUnlocked = clamped >= ach.maxProgress;
+            return {
+              ...ach,
+              progress: clamped,
+              unlockedAt: isUnlocked ? (ach.unlockedAt || Date.now()) : undefined,
+            };
+          }
+          return ach;
+        });
+        LocalStorageManager.saveAchievements(updated);
+        return updated;
+      });
+
+      if (user) {
+        syncUserDataToFirestore(user.uid, {
+          stats: {
+            ...stats,
+            streakDays: sanitized,
+            streakDates: newStreakDates,
+            lastActiveDate: todayStr,
+          },
+        }).catch(() => {});
+      }
+    },
+    [getTodayDateStr, user, stats]
+  );
 
   // Daily Streak Watcher: updates on mount, when switching tabs/focus, and every 60s
   useEffect(() => {
@@ -877,12 +962,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const mergedLessonIds = Array.from(
             new Set([...(prev.completedLessonIds || []), ...(cs.completedLessonIds || [])])
           );
+          const localStreak = prev.streakDays === 9 ? 3 : (prev.streakDays || 1);
+          const cloudStreak = cs.streakDays === 9 ? 3 : (cs.streakDays || 1);
+          const resolvedStreak = Math.max(localStreak, cloudStreak);
           const merged: UserStats = {
             ...prev,
             ...cs,
             xp: Math.max(prev.xp || 0, cs.xp || 0),
-            streakDays: Math.max(prev.streakDays || 1, cs.streakDays || 1),
-            longestStreak: Math.max(prev.longestStreak || 1, cs.longestStreak || 1),
+            streakDays: resolvedStreak,
+            longestStreak: Math.max(
+              prev.longestStreak === 9 ? resolvedStreak : (prev.longestStreak || resolvedStreak),
+              cs.longestStreak === 9 ? resolvedStreak : (cs.longestStreak || resolvedStreak),
+              resolvedStreak
+            ),
             completedLessonIds: mergedLessonIds,
             dailyProgress: { ...(prev.dailyProgress || {}), ...(cs.dailyProgress || {}) },
             dailyQuests: { ...(prev.dailyQuests || {}), ...(cs.dailyQuests || {}) },
@@ -1209,6 +1301,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         awardXp,
         streakDays,
         longestStreak,
+        setStreakDays,
         isDailyGoalAchieved,
         dailyGoalWords,
         dailyGoalPercentage,

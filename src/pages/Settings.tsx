@@ -17,10 +17,12 @@ import {
   CloudOff,
   Check,
   AlertTriangle,
+  Flame,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { LocalStorageManager } from '../utils/storage';
 import { Modal } from '../components/common/Modal';
+import { StreakModal } from '../components/common/StreakModal';
 
 export const Settings: React.FC = () => {
   const {
@@ -33,11 +35,13 @@ export const Settings: React.FC = () => {
     signInWithGoogle,
     signOutUser,
     resetAllProgress,
+    streakDays,
   } = useApp();
 
   const [studentNameInput, setStudentNameInput] = useState(settings.studentName);
   const [nameSaved, setNameSaved] = useState(false);
   const [showResetModal, setShowResetModal] = useState(false);
+  const [showStreakModal, setShowStreakModal] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
@@ -195,6 +199,26 @@ export const Settings: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Daily Study Streak */}
+          <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                <Flame className="w-3.5 h-3.5 text-[#FF9600]" />
+                <span>Daily Study Streak</span>
+              </span>
+              <span className="text-[11px] text-slate-500 block">
+                Currently active: <strong className="text-slate-800 dark:text-slate-200 font-mono">{streakDays} {streakDays === 1 ? 'day' : 'days'}</strong>. You can inspect or correct this anytime.
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowStreakModal(true)}
+              className="px-3 py-1.5 rounded-xl border-2 border-amber-300 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 text-[#FF9600] font-black text-xs hover:bg-amber-100 active:scale-95 transition-all"
+            >
+              Adjust Streak
+            </button>
           </div>
 
           {/* Preferred Quiz Length */}
@@ -456,6 +480,8 @@ export const Settings: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      <StreakModal isOpen={showStreakModal} onClose={() => setShowStreakModal(false)} />
     </div>
   );
 };

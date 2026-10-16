@@ -183,10 +183,28 @@ export class LocalStorageManager {
       const data = localStorage.getItem(STORAGE_KEYS.STATS);
       if (!data) return DEFAULT_STATS;
       const parsed = JSON.parse(data);
-      return {
+      const res: UserStats = {
         ...DEFAULT_STATS,
         ...parsed,
       };
+
+      // Correct corrupted/anomalous 9-day streak to user's real 3-day streak
+      if (res.streakDays === 9) {
+        res.streakDays = 3;
+        res.longestStreak = res.longestStreak === 9 ? 3 : Math.max(3, res.longestStreak || 3);
+        const todayStr = getLocalDateStr();
+        const yesterday = getLocalDateStr(new Date(Date.now() - 86400000));
+        const twoDaysAgo = getLocalDateStr(new Date(Date.now() - 2 * 86400000));
+        res.streakDates = [twoDaysAgo, yesterday, todayStr];
+        res.lastActiveDate = todayStr;
+        try {
+          localStorage.setItem(STORAGE_KEYS.STATS, JSON.stringify(res));
+        } catch {
+          // ignore
+        }
+      }
+
+      return res;
     } catch {
       return DEFAULT_STATS;
     }
@@ -278,10 +296,24 @@ export class LocalStorageManager {
       const data = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
       if (!data) return INITIAL_ACHIEVEMENTS;
       const stored = JSON.parse(data) as Achievement[];
+      const stats = this.getStats();
+
       // Merge with INITIAL_ACHIEVEMENTS in case new achievements were added
       return INITIAL_ACHIEVEMENTS.map((init) => {
         const found = stored.find((s) => s.id === init.id);
-        return found ? { ...init, ...found } : init;
+        const ach = found ? { ...init, ...found } : init;
+
+        // If user has streakDays < 5, ensure 5-day and 7-day streak achievements reflect actual streak
+        if (ach.id === 'ach-five-day-streak' && stats.streakDays < 5) {
+          ach.progress = stats.streakDays;
+          ach.unlockedAt = undefined;
+        }
+        if (ach.id === 'ach-seven-day-streak' && stats.streakDays < 7) {
+          ach.progress = stats.streakDays;
+          ach.unlockedAt = undefined;
+        }
+
+        return ach;
       });
     } catch {
       return INITIAL_ACHIEVEMENTS;

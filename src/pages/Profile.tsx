@@ -11,14 +11,15 @@ import {
   Calendar,
   BookOpen,
   Cloud,
-  CloudCheck,
   LogOut,
   RefreshCw,
   ShieldCheck,
+  Pencil,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PacoMascot } from '../components/common/PacoMascot';
 import { ProgressBar } from '../components/common/ProgressBar';
+import { StreakModal } from '../components/common/StreakModal';
 
 export const Profile: React.FC = () => {
   const {
@@ -38,6 +39,7 @@ export const Profile: React.FC = () => {
 
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [showStreakModal, setShowStreakModal] = useState(false);
 
   const handleSignIn = async () => {
     try {
@@ -215,10 +217,21 @@ export const Profile: React.FC = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
           {/* Streak */}
-          <div className="p-4 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-black text-[#FF9600]">
-              <Flame className="w-4 h-4 fill-[#FF9600]" />
-              <span>STREAK</span>
+          <div className="p-4 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1 relative group">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-black text-[#FF9600]">
+                <Flame className="w-4 h-4 fill-[#FF9600]" />
+                <span>STREAK</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowStreakModal(true)}
+                className="text-[10px] font-bold text-slate-400 hover:text-[#FF9600] flex items-center gap-0.5 cursor-pointer"
+                title="Adjust streak"
+              >
+                <Pencil className="w-2.5 h-2.5" />
+                <span>Edit</span>
+              </button>
             </div>
             <span className="text-2xl font-black font-mono text-slate-900 dark:text-white block">
               {stats.streakDays} Days
@@ -281,9 +294,18 @@ export const Profile: React.FC = () => {
               Learning Streak Calendar
             </h3>
           </div>
-          <span className="text-xs font-black font-mono text-[#FF9600]">
-            {stats.streakDays} Day Streak Active
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-black font-mono text-[#FF9600]">
+              {stats.streakDays} Day Streak Active
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowStreakModal(true)}
+              className="text-[11px] font-bold text-slate-400 hover:text-[#FF9600] px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-amber-300 transition-colors"
+            >
+              Adjust
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center justify-around pt-2">
@@ -371,6 +393,8 @@ export const Profile: React.FC = () => {
           })}
         </div>
       </div>
+
+      <StreakModal isOpen={showStreakModal} onClose={() => setShowStreakModal(false)} />
     </div>
   );
 };
