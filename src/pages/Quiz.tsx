@@ -65,16 +65,31 @@ export const Quiz: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Store wordProgress in a ref to avoid re-generating questions mid-quiz when answers are recorded
+  const wordProgressRef = useRef(wordProgress);
+  useEffect(() => {
+    wordProgressRef.current = wordProgress;
+  }, [wordProgress]);
+
+  const [hadNoMistakesInitially, setHadNoMistakesInitially] = useState(false);
+
   // 1. Generate questions
   useEffect(() => {
     let pool = [...VOCABULARY_DATABASE];
+    const currentWp = wordProgressRef.current;
 
     if (mode === 'mistake_revision') {
       // Pick words with needsRevision or high incorrect count
-      pool = pool.filter((v) => wordProgress[v.id]?.needsRevision || (wordProgress[v.id]?.timesIncorrect || 0) > 0);
-      if (pool.length === 0) {
-        // Fallback to least practiced words if no mistakes recorded yet
+      const mistakeWords = pool.filter(
+        (v) => currentWp[v.id]?.needsRevision || (currentWp[v.id]?.timesIncorrect || 0) > 0
+      );
+      if (mistakeWords.length === 0) {
+        setHadNoMistakesInitially(true);
+        // Fallback to full database shuffled if no mistakes recorded yet
         pool = [...VOCABULARY_DATABASE];
+      } else {
+        setHadNoMistakesInitially(false);
+        pool = mistakeWords;
       }
     } else if (mode === 'spelling_challenge' && categoryParam === 'all') {
       // Accent Trainer / Spelling Master: filter or prioritize words with written accents or special letters
@@ -91,6 +106,11 @@ export const Quiz: React.FC = () => {
       }
     }
 
+    // Fallback if pool is empty
+    if (pool.length === 0) {
+      pool = [...VOCABULARY_DATABASE];
+    }
+
     // Shuffle pool
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -100,15 +120,23 @@ export const Quiz: React.FC = () => {
     const selectedPool = pool.slice(0, Math.min(countParam, pool.length));
 
     // Construct questions based on mode
+    const qTypeParam = searchParams.get('qType');
     const generated: QuizQuestion[] = selectedPool.map((vocab, index) => {
       let isMultipleChoice = mode === 'multiple_choice';
 
-      if (mode === 'mixed_quiz') {
+      if (qTypeParam === 'mc') {
+        isMultipleChoice = true;
+      } else if (qTypeParam === 'typed') {
+        isMultipleChoice = false;
+      } else if (mode === 'mixed_quiz') {
         // Alternate between multiple choice and typed
         isMultipleChoice = index % 2 === 0;
       } else if (mode === 'speed_round') {
         // Rapid fire: 70% multiple choice for speed, 30% typed
         isMultipleChoice = index % 3 !== 2;
+      } else if (mode === 'category_quiz' && !qTypeParam) {
+        // Default category quiz to mixed for fun engagement
+        isMultipleChoice = index % 2 === 0;
       }
 
       let options: string[] = [];
@@ -116,7 +144,17 @@ export const Quiz: React.FC = () => {
         // Collect 3 distractors from same category or pool
         const otherWords = pool.filter((v) => v.id !== vocab.id);
         const shuffledOthers = [...otherWords].sort(() => 0.5 - Math.random());
-        const distractors = shuffledOthers.slice(0, 3).map((v) => v.spanish);
+        let distractors = shuffledOthers.slice(0, 3).map((v) => v.spanish);
+
+        // If not enough distractors in pool, grab from full database
+        if (distractors.length < 3) {
+          const fallbackOthers = VOCABULARY_DATABASE.filter(
+            (v) => v.id !== vocab.id && !distractors.includes(v.spanish)
+          ).sort(() => 0.5 - Math.random());
+          const extra = fallbackOthers.slice(0, 3 - distractors.length).map((v) => v.spanish);
+          distractors = [...distractors, ...extra];
+        }
+
         options = [vocab.spanish, ...distractors].sort(() => 0.5 - Math.random());
       }
 
@@ -133,13 +171,14 @@ export const Quiz: React.FC = () => {
     setQuestions(generated);
     setCurrentIndex(0);
     setUserTypedInput('');
+    setSelectedMcOption(null);
     setIsAnswerSubmitted(false);
     setFeedbackResult(null);
     setFinalResult(null);
     questionStartTimeRef.current = Date.now();
     quizStartTimeRef.current = Date.now();
     setTimeLeft(speedLimitSeconds);
-  }, [mode, categoryParam, countParam, difficultyParam, speedLimitSeconds, wordProgress]);
+  }, [mode, categoryParam, countParam, difficultyParam, speedLimitSeconds, searchParams]);
 
   const currentQ = questions[currentIndex];
 
@@ -555,6 +594,12 @@ export const Quiz: React.FC = () => {
             <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               {currentQ.vocab.category}
             </span>
+            {mode === 'mistake_revision' && (
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-[#FF4B4B] flex items-center gap-1">
+                <RotateCcw className="w-3 h-3" />
+                Mistakes Drill
+              </span>
+            )}
             {strictAccents && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-[#FF9600]">
                 Strict Accents

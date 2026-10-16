@@ -20,6 +20,22 @@ const STORAGE_KEYS = {
   ACTIVE_MOCK: 'palabra_active_mock_session',
 };
 
+export const getLocalDateStr = (d: Date = new Date()): string => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const getCalendarDayDifference = (dateStr1: string, dateStr2: string): number => {
+  if (!dateStr1 || !dateStr2) return 0;
+  const [y1, m1, d1] = dateStr1.split('-').map(Number);
+  const [y2, m2, d2] = dateStr2.split('-').map(Number);
+  const utc1 = Date.UTC(y1, m1 - 1, d1);
+  const utc2 = Date.UTC(y2, m2 - 1, d2);
+  return Math.round((utc2 - utc1) / (1000 * 60 * 60 * 24));
+};
+
 export const DEFAULT_SETTINGS: UserSettings = {
   studentName: 'Sibaq Aspirant',
   theme: 'light',
@@ -40,7 +56,7 @@ export const DEFAULT_STATS: UserStats = {
   hearts: 5,
   maxHearts: 5,
   lastHeartRefillDate: new Date().toISOString(),
-  lastActiveDate: new Date().toISOString().split('T')[0],
+  lastActiveDate: getLocalDateStr(),
   completedLessonIds: [],
   totalQuizzesCompleted: 0,
   totalMockTestsCompleted: 0,
@@ -48,6 +64,7 @@ export const DEFAULT_STATS: UserStats = {
   dailyProgress: {},
   dailyQuests: {},
   goalAchievedDates: [],
+  streakDates: [getLocalDateStr()],
 };
 
 export const INITIAL_ACHIEVEMENTS: Achievement[] = [
@@ -97,6 +114,15 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     xpReward: 150,
   },
   {
+    id: 'ach-five-day-streak',
+    title: '5-Day Streak',
+    description: 'Maintain a 5-day daily study streak.',
+    icon: 'Flame',
+    progress: 1,
+    maxProgress: 5,
+    xpReward: 150,
+  },
+  {
     id: 'ach-seven-day-streak',
     title: 'Seven-Day Streak',
     description: 'Maintain a 7-day daily study streak.',
@@ -104,6 +130,15 @@ export const INITIAL_ACHIEVEMENTS: Achievement[] = [
     progress: 1,
     maxProgress: 7,
     xpReward: 200,
+  },
+  {
+    id: 'ach-100-mastered',
+    title: '100 Words Mastered',
+    description: 'Achieve mastery on 100 Spanish vocabulary words.',
+    icon: 'Trophy',
+    progress: 0,
+    maxProgress: 100,
+    xpReward: 250,
   },
   {
     id: 'ach-mock-finisher',
@@ -148,30 +183,9 @@ export class LocalStorageManager {
       const data = localStorage.getItem(STORAGE_KEYS.STATS);
       if (!data) return DEFAULT_STATS;
       const parsed = JSON.parse(data);
-      // Validate streak
-      const today = new Date().toISOString().split('T')[0];
-      const lastActive = parsed.lastActiveDate || today;
-
-      const date1 = new Date(lastActive);
-      const date2 = new Date(today);
-      const diffDays = Math.floor(
-        (date2.getTime() - date1.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
-      let streak = parsed.streakDays || 1;
-      if (diffDays === 1) {
-        // Continuous streak
-      } else if (diffDays > 1) {
-        // Streak broken
-        streak = 1;
-      }
-
       return {
         ...DEFAULT_STATS,
         ...parsed,
-        streakDays: streak,
-        longestStreak: Math.max(parsed.longestStreak || 1, streak),
-        lastActiveDate: today,
       };
     } catch {
       return DEFAULT_STATS;

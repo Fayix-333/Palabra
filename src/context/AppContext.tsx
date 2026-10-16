@@ -240,30 +240,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Helper to get local date string YYYY-MM-DD
-  const getTodayDateStr = (): string => {
+  const getTodayDateStr = useCallback((): string => {
     const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
+  }, []);
 
-  const today = getTodayDateStr();
+  const [currentDateStr, setCurrentDateStr] = useState<string>(getTodayDateStr);
+  const today = currentDateStr;
 
-  // Streak Manager: calculates daily login streak on mount and persists to LocalStorage
+  // Streak Manager: accurately calculates daily streak every day and on user practice
   const checkAndUpdateStreak = useCallback(() => {
     const todayStr = getTodayDateStr();
+    setCurrentDateStr((prevDate) => (prevDate !== todayStr ? todayStr : prevDate));
+
     setStats((prev) => {
       const lastDate = prev.lastActiveDate;
-      let newStreak = prev.streakDays || 1;
+      const currentStreak = prev.streakDays || 1;
+      let newStreak = currentStreak;
       let needsSave = false;
+      let isConsecutiveDay = false;
 
       if (!lastDate) {
         newStreak = 1;
         needsSave = true;
       } else if (lastDate === todayStr) {
-        // Logged in today; streak intact
-        newStreak = Math.max(1, prev.streakDays || 1);
+        // Logged in today; maintain streak
+        newStreak = Math.max(1, currentStreak);
       } else {
         const [tY, tM, tD] = todayStr.split('-').map(Number);
         const [lY, lM, lD] = lastDate.split('-').map(Number);
@@ -272,34 +277,75 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const diffDays = Math.round((todayUtc - lastUtc) / (1000 * 60 * 60 * 24));
 
         if (diffDays === 1) {
-          // Consecutive day login: increment streak!
-          newStreak = (prev.streakDays || 0) + 1;
+          // Consecutive calendar day! Increment daily streak
+          newStreak = currentStreak + 1;
           needsSave = true;
+          isConsecutiveDay = true;
         } else if (diffDays > 1) {
-          // Streak broken after missing 1+ day
+          // Missed 1 or more calendar days: streak resets to 1 for today's session
           newStreak = 1;
           needsSave = true;
         }
       }
 
-      if (needsSave || prev.lastActiveDate !== todayStr) {
-        const longest = Math.max(prev.longestStreak || 1, newStreak);
+      const longest = Math.max(prev.longestStreak || 1, newStreak);
+      const prevStreakDates = prev.streakDates || [];
+      const updatedStreakDates = prevStreakDates.includes(todayStr)
+        ? prevStreakDates
+        : [...prevStreakDates, todayStr];
+
+      if (needsSave || prev.lastActiveDate !== todayStr || newStreak !== prev.streakDays) {
         const updated: UserStats = {
           ...prev,
           streakDays: newStreak,
           longestStreak: longest,
           lastActiveDate: todayStr,
+          streakDates: updatedStreakDates,
           goalAchievedDates: prev.goalAchievedDates || [],
         };
         LocalStorageManager.saveStats(updated);
+
+        if (isConsecutiveDay) {
+          if (settings.soundEffects) {
+            soundManager.playFanfare();
+          }
+          try {
+            confetti({
+              particleCount: 50,
+              spread: 60,
+              origin: { y: 0.2 },
+              colors: ['#FF9600', '#FFC800', '#58CC02'],
+            });
+          } catch {
+            // ignore
+          }
+        }
+
         return updated;
       }
       return prev;
     });
-  }, []);
+  }, [getTodayDateStr, settings.soundEffects]);
 
+  // Daily Streak Watcher: updates on mount, when switching tabs/focus, and every 60s
   useEffect(() => {
     checkAndUpdateStreak();
+
+    const handleFocusOrVisible = () => {
+      if (document.visibilityState === 'visible') {
+        checkAndUpdateStreak();
+      }
+    };
+
+    window.addEventListener('visibilitychange', handleFocusOrVisible);
+    window.addEventListener('focus', handleFocusOrVisible);
+    const interval = setInterval(checkAndUpdateStreak, 60000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleFocusOrVisible);
+      window.removeEventListener('focus', handleFocusOrVisible);
+      clearInterval(interval);
+    };
   }, [checkAndUpdateStreak]);
 
   const updateSettings = useCallback((newSettings: Partial<UserSettings>) => {
@@ -572,7 +618,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (ach.id === 'ach-first-10') newProgress = totalLearned;
           if (ach.id === 'ach-explorer') newProgress = categoriesPracticed.size;
           if (ach.id === 'ach-100-words') newProgress = totalPracticed;
+          if (ach.id === 'ach-five-day-streak') newProgress = currentStats.streakDays;
           if (ach.id === 'ach-seven-day-streak') newProgress = currentStats.streakDays;
+          if (ach.id === 'ach-100-mastered') {
+            newProgress = Object.values(currentProgress).filter((w) => w.mastered).length;
+          }
           if (ach.id === 'ach-mock-finisher') newProgress = mocks.length;
           if (ach.id === 'ach-number-master') newProgress = numberItemsMastered;
           if (ach.id === 'ach-speed-learner') {

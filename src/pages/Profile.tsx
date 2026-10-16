@@ -59,15 +59,21 @@ export const Profile: React.FC = () => {
     }
   };
 
-  // 7-day streak calendar
-  const today = new Date();
+  // 7-day streak calendar using local calendar dates
   const pastWeek = Array.from({ length: 7 }).map((_, i) => {
     const d = new Date();
-    d.setDate(today.getDate() - (6 - i));
-    const dateStr = d.toISOString().split('T')[0];
+    d.setDate(d.getDate() - (6 - i));
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const dayLetter = d.toLocaleDateString('en-US', { weekday: 'narrow' });
-    const isPracticed = (stats.dailyProgress[dateStr] || 0) > 0;
-    return { dateStr, dayLetter, isPracticed };
+    const isToday = i === 6;
+    const isPracticed =
+      (stats.dailyProgress[dateStr] || 0) > 0 ||
+      (stats.streakDates?.includes(dateStr) ?? false) ||
+      (isToday && (stats.streakDays || 0) > 0);
+    return { dateStr, dayLetter, isPracticed, isToday };
   });
 
   return (
@@ -316,14 +322,14 @@ export const Profile: React.FC = () => {
                 key={ach.id}
                 className={`p-4 rounded-3xl border-2 transition-all flex items-start gap-4 ${
                   isUnlocked
-                    ? 'border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-950/20'
+                    ? 'border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-950/20 shadow-xs hover:scale-[1.01]'
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 opacity-75'
                 }`}
               >
                 <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-transform ${
                     isUnlocked
-                      ? 'bg-[#FFC800] text-white shadow-xs'
+                      ? 'bg-gradient-to-br from-[#FFC800] to-[#FF9600] text-white shadow-xs ring-2 ring-amber-400/50'
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-400'
                   }`}
                 >

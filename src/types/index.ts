@@ -166,6 +166,7 @@ export interface UserStats {
   dailyProgress: Record<string, number>; // date (YYYY-MM-DD) -> words practiced count
   dailyQuests: Record<string, { lessonsDone: number; correctCount: number; mistakeReviewCount: number; claimedIds: string[] }>;
   goalAchievedDates: string[]; // dates (YYYY-MM-DD) on which daily goal was met
+  streakDates?: string[]; // list of active dates credited to daily streak
 }
 
 export interface DayPlanItem {
