@@ -103,6 +103,22 @@
         }
       },
       "required": ["userId", "userName", "message", "timestamp"]
+    },
+    "LeaderboardRecord": {
+      "title": "LeaderboardRecord",
+      "description": "Public live leaderboard entry for real students",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "institution": { "type": "string" },
+        "xp": { "type": "number" },
+        "streak": { "type": "number" },
+        "avatarColor": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "name", "xp", "streak"]
     }
   },
   "firestore": {
@@ -117,6 +133,10 @@
     "/chats/{chatId}": {
       "schema": "ChatMessage",
       "description": "Real-time chat room for connected learners"
+    },
+    "/leaderboard/{userId}": {
+      "schema": "LeaderboardRecord",
+      "description": "Shared live leaderboard entries from all real learners"
     }
   }
 }

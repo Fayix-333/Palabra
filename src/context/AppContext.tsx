@@ -33,6 +33,7 @@ import {
   loginWithGoogle,
   logoutUser,
   broadcastUserLogin,
+  updateLeaderboardRecord,
 } from '../utils/firebase';
 import { soundManager } from '../utils/sound';
 
@@ -240,6 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           }
           setCloudSyncStatus('synced');
+          await broadcastUserLogin(authUser);
+          await updateLeaderboardRecord(authUser, { xp: stats.xp, streak: stats.streakDays }, 'DHIU Sibaq National Candidate');
         } catch {
           setCloudSyncStatus('error');
         }

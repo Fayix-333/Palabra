@@ -149,6 +149,9 @@ export interface LeaderboardEntry {
   streak: number;
   avatarColor: string;
   isCurrentStudent?: boolean;
+  isRealUser?: boolean;
+  photoURL?: string;
+  recentXpGain?: number;
 }
 
 export interface UserStats {

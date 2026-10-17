@@ -280,3 +280,79 @@ export function subscribeToChatMessages(
     return () => {};
   }
 }
+
+
+export async function updateLeaderboardRecord(
+  user: User,
+  stats: { xp: number; streak: number },
+  institution: string = 'DHIU Sibaq National Candidate'
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  try {
+    const docRef = doc(db, 'leaderboard', user.uid);
+    const name = user.displayName || user.email?.split('@')[0] || 'Learner';
+    await setDoc(
+      docRef,
+      {
+        userId: user.uid,
+        name,
+        institution,
+        xp: stats.xp,
+        streak: stats.streak,
+        avatarColor: 'bg-[#58CC02]',
+        photoURL: user.photoURL || '',
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('Could not update leaderboard record:', err);
+  }
+}
+
+export function subscribeToLeaderboard(
+  callback: (records: any[]) => void
+): () => void {
+  if (!isFirebaseConfigured || !db) {
+    callback([]);
+    return () => {};
+  }
+  try {
+    const colRef = collection(db, 'leaderboard');
+    const q = query(colRef, orderBy('xp', 'desc'), limit(50));
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const items: any[] = [];
+        snapshot.forEach((itemDoc) => {
+          const data = itemDoc.data();
+          items.push({
+            id: itemDoc.id,
+            userId: data.userId || itemDoc.id,
+            name: data.name || 'Learner',
+            institution: data.institution || 'Sibaq Aspirant',
+            xp: data.xp || 0,
+            streak: data.streak || 1,
+            avatarColor: data.avatarColor || 'bg-emerald-500',
+            photoURL: data.photoURL || '',
+            isRealUser: true,
+          });
+        });
+        callback(items);
+      },
+      (error) => {
+        console.warn('Leaderboard subscription notice:', error);
+      }
+    );
+  } catch (err) {
+    console.warn('Failed to listen to leaderboard:', err);
+    return () => {};
+  }
+}
+
+export function subscribeToLiveLeaderboard(
+  callback: (records: any[]) => void
+): () => void {
+  return subscribeToLeaderboard(callback);
+}
+

@@ -77,8 +77,14 @@ export const Quiz: React.FC = () => {
   useEffect(() => {
     let pool = [...VOCABULARY_DATABASE];
     const currentWp = wordProgressRef.current;
+    const includeIdsParam = searchParams.get('includeIds');
 
-    if (mode === 'mistake_revision') {
+    if (includeIdsParam) {
+      const ids = includeIdsParam.split(',').filter(Boolean);
+      if (ids.length > 0) {
+        pool = VOCABULARY_DATABASE.filter((v) => ids.includes(v.id));
+      }
+    } else if (mode === 'mistake_revision') {
       // Pick words with needsRevision or high incorrect count
       const mistakeWords = pool.filter(
         (v) => currentWp[v.id]?.needsRevision || (currentWp[v.id]?.timesIncorrect || 0) > 0
@@ -98,8 +104,13 @@ export const Quiz: React.FC = () => {
         }
       }
     } else {
-      // Category & specialized sub-section filtering
-      if (categoryParam === 'numbers_0_20') {
+      const categoriesParam = searchParams.get('categories');
+      if (categoriesParam) {
+        const catList = categoriesParam.split(',').filter(Boolean);
+        if (catList.length > 0) {
+          pool = pool.filter((v) => catList.includes(v.category));
+        }
+      } else if (categoryParam === 'numbers_0_20') {
         pool = pool.filter(
           (v) =>
             v.category === 'numbers' &&

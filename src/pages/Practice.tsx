@@ -218,12 +218,46 @@ export const Practice: React.FC = () => {
   const [activeTab, setActiveTab] = useState<PracticeTab>('games');
 
   // Custom Quiz Builder State
-  const [customCategory, setCustomCategory] = useState<string>('all');
-  const [customCount, setCustomCount] = useState<number>(20);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['all']);
+  const [customCount, setCustomCount] = useState<number>(5); // default to 5 as requested
   const [customMode, setCustomMode] = useState<QuizMode>('mixed_quiz');
   const [customDifficulty, setCustomDifficulty] = useState<DifficultyLevel | 'all'>('all');
   const [customStrict, setCustomStrict] = useState<boolean>(true);
   const [customSpeedLimit, setCustomSpeedLimit] = useState<number>(10);
+
+  // Include / Exclude Specific Words State
+  const [selectedIncludeIds, setSelectedIncludeIds] = useState<string[]>([]);
+  const [showWordSelector, setShowWordSelector] = useState<boolean>(false);
+
+  const handleToggleCategory = (catId: string) => {
+    if (catId === 'all') {
+      setSelectedCategories(['all']);
+      return;
+    }
+    setSelectedCategories((prev) => {
+      const withoutAll = prev.filter((c) => c !== 'all');
+      if (withoutAll.includes(catId)) {
+        const next = withoutAll.filter((c) => c !== catId);
+        return next.length === 0 ? ['all'] : next;
+      } else {
+        return [...withoutAll, catId];
+      }
+    });
+  };
+
+  // Filter words available for inclusion/exclusion based on selectedCategories
+  const categoryWordsForSelector = useMemo(() => {
+    if (selectedCategories.includes('all')) return VOCABULARY_DATABASE;
+    return VOCABULARY_DATABASE.filter((v) =>
+      selectedCategories.some((cat) => (cat.startsWith('numbers') ? v.category === 'numbers' : v.category === cat))
+    );
+  }, [selectedCategories]);
+
+  const handleToggleWordInclude = (id: string) => {
+    setSelectedIncludeIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
 
   // List of mistakes synced from wordProgress
   const mistakeList = useMemo(() => {
@@ -265,14 +299,22 @@ export const Practice: React.FC = () => {
   };
 
   const handleLaunchCustom = () => {
+    const finalCount = selectedIncludeIds.length > 0 ? selectedIncludeIds.length : customCount;
+    const isAll = selectedCategories.includes('all');
     const params = new URLSearchParams({
       mode: customMode,
-      category: customCategory,
-      count: String(customCount),
+      category: isAll ? 'all' : selectedCategories[0],
+      count: String(finalCount),
       strict: String(customStrict),
       difficulty: customDifficulty,
       speedLimit: String(customSpeedLimit),
     });
+    if (!isAll && selectedCategories.length > 1) {
+      params.set('categories', selectedCategories.join(','));
+    }
+    if (selectedIncludeIds.length > 0) {
+      params.set('includeIds', selectedIncludeIds.join(','));
+    }
     navigate(`/quiz?${params.toString()}`);
   };
 
@@ -605,32 +647,57 @@ export const Practice: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-            {/* 1. Category */}
-            <div className="space-y-2">
-              <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
-                Category
-              </label>
-              <select
-                value={customCategory}
-                onChange={(e) => setCustomCategory(e.target.value)}
-                className="w-full p-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-[#1CB0F6]"
-              >
-                <option value="all">🌟 All 7 Syllabus Categories (216+ Words)</option>
-                <optgroup label="Core Syllabus Categories">
-                  {CATEGORIES.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.spanishName})
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Numbers Sub-Sections & Drills">
-                  <option value="numbers">🔢 Numbers (All 0 to 1,000,000)</option>
-                  <option value="numbers_0_20">🔢 Numbers: 0 to 20 (Foundations & dieciséis)</option>
-                  <option value="numbers_21_100">🔢 Numbers: 21 to 100 (Tens & Compounds)</option>
-                  <option value="numbers_hundreds">🔢 Numbers: Hundreds & Large Numbers (quinientos, millón)</option>
-                  <option value="numbers_accents">✨ Numbers: Accent Traps (dieciséis, veintidós, veintitrés, veintiséis)</option>
-                </optgroup>
-              </select>
+            {/* 1. Categories (Multi-select) */}
+            <div className="md:col-span-2 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wide block">
+                  Categories (Select One or More)
+                </label>
+                <span className="text-xs font-black px-2.5 py-0.5 rounded-lg bg-sky-100 dark:bg-sky-950 text-[#1CB0F6]">
+                  {selectedCategories.includes('all') ? 'All 7 Categories' : `${selectedCategories.length} Selected`}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleToggleCategory('all')}
+                  className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                    selectedCategories.includes('all')
+                      ? 'border-[#1CB0F6] bg-[#E5F6FF] dark:bg-sky-950/60 text-[#1CB0F6] font-black shadow-xs'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-xs block">🌟 All 7 Categories</span>
+                  <span className="text-[10px] opacity-75">216+ Words</span>
+                </button>
+
+                {CATEGORIES.map((c) => {
+                  const isChecked = selectedCategories.includes(c.id);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => handleToggleCategory(c.id)}
+                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                        isChecked
+                          ? 'border-[#58CC02] bg-emerald-50 dark:bg-emerald-950/40 text-slate-900 dark:text-white font-black shadow-xs'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs truncate block">{c.name}</span>
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold ${
+                          isChecked ? 'bg-[#58CC02] border-[#58CC02] text-white' : 'border-slate-300 dark:border-slate-700'
+                        }`}>
+                          {isChecked ? '✓' : ''}
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-slate-400 truncate block mt-0.5">{c.spanishName}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* 2. Mode */}
@@ -706,6 +773,106 @@ export const Practice: React.FC = () => {
               <p className="text-[11px] font-semibold text-slate-400">
                 Guaranteed: Quiz delivers all {customCount} questions without cutting short.
               </p>
+            </div>
+
+            {/* Word Inclusion / Exclusion Granular Selector */}
+            <div className="md:col-span-2 p-5 rounded-3xl border-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wide block">
+                    Include & Exclude Specific Words (Granular Control)
+                  </span>
+                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                    {selectedIncludeIds.length === 0
+                      ? 'All words in category included by default. Check words to restrict quiz to specific items (e.g. exactly 5).'
+                      : `Custom filter active: ${selectedIncludeIds.length} words selected.`}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIncludeIds([])}
+                    className="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 cursor-pointer"
+                  >
+                    Reset All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIncludeIds(categoryWordsForSelector.slice(0, 5).map((v) => v.id))}
+                    className="px-3 py-1.5 rounded-xl bg-[#E5F6FF] dark:bg-sky-950 text-[#1CB0F6] text-xs font-black cursor-pointer"
+                  >
+                    Pick 5 Words
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowWordSelector((prev) => !prev)}
+                    className="px-3.5 py-1.5 rounded-xl btn-duo-blue text-xs font-black cursor-pointer"
+                  >
+                    {showWordSelector ? 'Hide Selector' : 'Select Words...'}
+                  </button>
+                </div>
+              </div>
+
+              {showWordSelector && (
+                <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
+                    <span>Available in [{selectedCategories.includes('all') ? 'All Categories' : selectedCategories.join(', ')}]: {categoryWordsForSelector.length} words</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIncludeIds(categoryWordsForSelector.map((v) => v.id))}
+                        className="text-[#1CB0F6] hover:underline cursor-pointer font-black"
+                      >
+                        Select All
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedIncludeIds([])}
+                        className="text-rose-500 hover:underline cursor-pointer font-black"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                    {categoryWordsForSelector.map((v) => {
+                      const isSelected = selectedIncludeIds.includes(v.id);
+                      return (
+                        <label
+                          key={v.id}
+                          className={`flex items-center justify-between p-2 rounded-xl border transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'border-[#58CC02] bg-emerald-50 dark:bg-emerald-950/30'
+                              : 'border-slate-200 dark:border-slate-800 opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleWordInclude(v.id)}
+                              className="w-4 h-4 rounded text-[#58CC02] accent-[#58CC02] cursor-pointer"
+                            />
+                            <div className="min-w-0">
+                              <span className="text-xs font-black text-slate-900 dark:text-white truncate block">
+                                {v.spanish}
+                              </span>
+                              <span className="text-[10px] text-slate-500 truncate block">
+                                {v.english}
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-400">
+                            {v.difficulty}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* 4. Difficulty */}
