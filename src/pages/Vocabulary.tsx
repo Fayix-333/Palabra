@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Search,
   Filter,
@@ -18,10 +19,13 @@ import { soundManager } from '../utils/sound';
 import { VocabularyItem } from '../types';
 
 export const Vocabulary: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlCategory = searchParams.get('category') || 'all';
+
   const { settings, wordProgress, toggleWordFavorite, saveWordNote } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>(urlCategory);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
   const [filterAccentOnly, setFilterAccentOnly] = useState(false);
   const [filterFavoritesOnly, setFilterFavoritesOnly] = useState(false);
@@ -31,6 +35,14 @@ export const Vocabulary: React.FC = () => {
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState<string>('');
   const [isPrintMode, setIsPrintMode] = useState(false);
+
+  // Sync category from URL if it changes
+  useEffect(() => {
+    const cat = searchParams.get('category');
+    if (cat) {
+      setSelectedCategory(cat);
+    }
+  }, [searchParams]);
 
   // Filtered vocabulary list
   const filteredList = useMemo(() => {
@@ -56,7 +68,10 @@ export const Vocabulary: React.FC = () => {
         const enMatch = item.english.toLowerCase().includes(q);
         const esMatch = item.spanish.toLowerCase().includes(q);
         const altMatch = item.alternatives.some((a) => a.toLowerCase().includes(q));
-        if (!enMatch && !esMatch && !altMatch) return false;
+        const catMatch =
+          item.category.toLowerCase().includes(q) ||
+          ((q === 'color' || q === 'colors' || q === 'colour' || q === 'colours' || q === 'colores') && item.category === 'colours');
+        if (!enMatch && !esMatch && !altMatch && !catMatch) return false;
       }
 
       return true;
@@ -188,6 +203,42 @@ export const Vocabulary: React.FC = () => {
       ) : (
         /* STANDARD DICTIONARY VIEW */
         <div className="space-y-6">
+          {/* Quick Category Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory('all')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-colors cursor-pointer ${
+                selectedCategory === 'all'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+              }`}
+            >
+              All ({VOCABULARY_DATABASE.length})
+            </button>
+            {CATEGORIES.map((c) => {
+              const count = VOCABULARY_DATABASE.filter((v) => v.category === c.id).length;
+              const isActive = selectedCategory === c.id;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(c.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 transition-colors flex items-center gap-1.5 cursor-pointer ${
+                    isActive
+                      ? 'bg-[#1CB0F6] text-white shadow-xs'
+                      : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                  }`}
+                >
+                  <span>{c.name}</span>
+                  <span className={`text-[10px] font-mono px-1 py-0.2 rounded ${isActive ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700'}`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Search & Filter Bar */}
           <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs space-y-3">
             <div className="relative">

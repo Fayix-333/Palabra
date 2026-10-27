@@ -295,19 +295,76 @@ export const LEARNING_UNITS: LearningUnit[] = [
         description: 'Advanced shades including marrón, café, celeste, plateado, and crema.',
       },
       {
+        id: 'u4-l3',
+        unitId: 4,
+        title: 'Deep, Naval & Blue Tones',
+        subtitle: 'Azul marino, cobalto, zafiro, añil',
+        category: 'colours',
+        xpReward: 25,
+        vocabIds: [
+          'col-navyblue', 'col-cobaltblue', 'col-steelblue', 'col-sapphire', 'col-indigo', 'col-dark'
+        ],
+        type: 'lesson',
+        position: 'center',
+        description: 'Rich blue spectrum: azul marino, azul cobalto, azul acero, zafiro, and añil/índigo.',
+      },
+      {
+        id: 'u4-l4',
+        unitId: 4,
+        title: 'Rich Reds, Wines & Warm Hues',
+        subtitle: 'Borgoña, rojo vino, granate, salmón',
+        category: 'colours',
+        xpReward: 25,
+        vocabIds: [
+          'col-burgundy', 'col-winered', 'col-magenta', 'col-maroon', 'col-firecolour', 'col-salmon'
+        ],
+        type: 'lesson',
+        position: 'left',
+        description: 'Warm, intense hues: borgoña, rojo vino, magenta, granate, color fuego, and salmón.',
+      },
+      {
+        id: 'u4-l5',
+        unitId: 4,
+        title: 'Greens, Nature & Earth Hues',
+        subtitle: 'Verde oliva, esmeralda, menta, ocre',
+        category: 'colours',
+        xpReward: 25,
+        vocabIds: [
+          'col-olivegreen', 'col-emeraldgreen', 'col-mint', 'col-mustardyellow', 'col-strawyellow', 'col-amberlightgreen', 'col-ochre'
+        ],
+        type: 'lesson',
+        position: 'right',
+        description: 'Natural tones: verde oliva, verde esmeralda, verde menta, mostaza, paja, and ocre.',
+      },
+      {
+        id: 'u4-l6',
+        unitId: 4,
+        title: 'Gemstones, Minerals & Pastels',
+        subtitle: 'Amatista, lavanda, caqui, bronce, cobre, perla',
+        category: 'colours',
+        xpReward: 25,
+        vocabIds: [
+          'col-amethyst', 'col-lavender', 'col-caramel', 'col-khaki', 'col-bronze', 'col-copper', 'col-pearl'
+        ],
+        type: 'lesson',
+        position: 'center',
+        description: 'Mineral and refined shades: amatista, lavanda, caramelo, caqui, bronce, cobre, and perla.',
+      },
+      {
         id: 'u4-chk',
         unitId: 4,
-        title: 'Colour World Checkpoint',
-        subtitle: 'Full palette quiz',
+        title: 'Colour World Grand Checkpoint',
+        subtitle: 'Full 45-color palette test',
         category: 'colours',
-        xpReward: 50,
+        xpReward: 60,
         vocabIds: [
-          'col-red', 'col-blue', 'col-yellow', 'col-brown',
-          'col-pink', 'col-gold', 'col-lightblue', 'col-purple', 'col-cream'
+          'col-red', 'col-blue', 'col-burgundy', 'col-navyblue',
+          'col-emeraldgreen', 'col-sapphire', 'col-indigo', 'col-salmon',
+          'col-bronze', 'col-pearl', 'col-mint', 'col-maroon'
         ],
         type: 'checkpoint',
         position: 'center',
-        description: 'Show total command of color translations and spelling.',
+        description: 'Show total command of the full 45-color Spanish vocabulary.',
       },
     ],
   },

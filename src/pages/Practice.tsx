@@ -132,6 +132,20 @@ const PRACTICE_GAMES: PracticeGameCard[] = [
     badgeBg: 'bg-[#00CD9C]',
   },
   {
+    id: 'game-color-sprint',
+    title: 'Color Chroma Sprint',
+    subtitle: '45+ Colors & nuanced shades',
+    description: 'Drill primary, metallic, jewel, and nuanced hues: borgoña, verde oliva, azul marino, zafiro, granate, salmón, esmeralda.',
+    mode: 'type_translation',
+    category: 'colours',
+    count: 25,
+    strict: true,
+    xpReward: 35,
+    icon: Palette,
+    accentColor: 'border-[#CE82FF] bg-[#F6EEFF] dark:bg-purple-950/40 text-[#CE82FF]',
+    badgeBg: 'bg-[#CE82FF]',
+  },
+  {
     id: 'game-number-ninja',
     title: 'Number Ninja',
     subtitle: '0 to 1,000,000 drill',
@@ -228,6 +242,7 @@ export const Practice: React.FC = () => {
   // Include / Exclude Specific Words State
   const [selectedIncludeIds, setSelectedIncludeIds] = useState<string[]>([]);
   const [showWordSelector, setShowWordSelector] = useState<boolean>(false);
+  const [wordSearchFilter, setWordSearchFilter] = useState<string>('');
 
   const handleToggleCategory = (catId: string) => {
     if (catId === 'all') {
@@ -246,12 +261,23 @@ export const Practice: React.FC = () => {
   };
 
   // Filter words available for inclusion/exclusion based on selectedCategories
-  const categoryWordsForSelector = useMemo(() => {
+  const allCategoryWords = useMemo(() => {
     if (selectedCategories.includes('all')) return VOCABULARY_DATABASE;
     return VOCABULARY_DATABASE.filter((v) =>
       selectedCategories.some((cat) => (cat.startsWith('numbers') ? v.category === 'numbers' : v.category === cat))
     );
   }, [selectedCategories]);
+
+  const categoryWordsForSelector = useMemo(() => {
+    if (!wordSearchFilter.trim()) return allCategoryWords;
+    const q = wordSearchFilter.toLowerCase().trim();
+    return allCategoryWords.filter(
+      (v) =>
+        v.english.toLowerCase().includes(q) ||
+        v.spanish.toLowerCase().includes(q) ||
+        v.alternatives.some((a) => a.toLowerCase().includes(q))
+    );
+  }, [allCategoryWords, wordSearchFilter]);
 
   const handleToggleWordInclude = (id: string) => {
     setSelectedIncludeIds((prev) =>
@@ -669,7 +695,7 @@ export const Practice: React.FC = () => {
                   }`}
                 >
                   <span className="text-xs block">🌟 All 7 Categories</span>
-                  <span className="text-[10px] opacity-75">216+ Words</span>
+                  <span className="text-[10px] opacity-75">{VOCABULARY_DATABASE.length} Words</span>
                 </button>
 
                 {CATEGORIES.map((c) => {
@@ -815,12 +841,14 @@ export const Practice: React.FC = () => {
 
               {showWordSelector && (
                 <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-700">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                    <span>Available in [{selectedCategories.includes('all') ? 'All Categories' : selectedCategories.join(', ')}]: {categoryWordsForSelector.length} words</span>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold text-slate-500">
+                    <span>
+                      Available in [{selectedCategories.includes('all') ? 'All Categories' : selectedCategories.join(', ')}]: {categoryWordsForSelector.length} of {allCategoryWords.length} words
+                    </span>
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => setSelectedIncludeIds(categoryWordsForSelector.map((v) => v.id))}
+                        onClick={() => setSelectedIncludeIds(allCategoryWords.map((v) => v.id))}
                         className="text-[#1CB0F6] hover:underline cursor-pointer font-black"
                       >
                         Select All
@@ -836,7 +864,27 @@ export const Practice: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="max-h-48 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                  {/* Word quick search bar */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={wordSearchFilter}
+                      onChange={(e) => setWordSearchFilter(e.target.value)}
+                      placeholder="Quick search words to include (e.g. burgundy, wine, sapphire, esmeralda)..."
+                      className="w-full px-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-[#1CB0F6]"
+                    />
+                    {wordSearchFilter && (
+                      <button
+                        type="button"
+                        onClick={() => setWordSearchFilter('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-2 p-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
                     {categoryWordsForSelector.map((v) => {
                       const isSelected = selectedIncludeIds.includes(v.id);
                       return (
