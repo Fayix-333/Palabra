@@ -107,8 +107,35 @@ export const Quiz: React.FC = () => {
       const categoriesParam = searchParams.get('categories');
       if (categoriesParam) {
         const catList = categoriesParam.split(',').filter(Boolean);
-        if (catList.length > 0) {
-          pool = pool.filter((v) => catList.includes(v.category));
+        if (catList.length > 0 && !catList.includes('all')) {
+          pool = pool.filter((v) => {
+            return catList.some((cat) => {
+              if (cat === 'numbers_0_20') {
+                return (
+                  v.category === 'numbers' &&
+                  ['num-0', 'num-1', 'num-2', 'num-3', 'num-4', 'num-5', 'num-6', 'num-7', 'num-8', 'num-9',
+                   'num-10', 'num-11', 'num-12', 'num-13', 'num-14', 'num-15', 'num-16', 'num-17', 'num-18', 'num-19', 'num-20'].includes(v.id)
+                );
+              }
+              if (cat === 'numbers_21_100') {
+                return (
+                  v.category === 'numbers' &&
+                  /^num-(2[1-9]|3[0-9]|4[0-9]|5[0-9]|6[0-9]|7[0-9]|8[0-9]|9[0-9]|100)$/.test(v.id)
+                );
+              }
+              if (cat === 'numbers_hundreds') {
+                return (
+                  v.category === 'numbers' &&
+                  ['num-101', 'num-200', 'num-300', 'num-400', 'num-500', 'num-600', 'num-700', 'num-800',
+                   'num-900', 'num-1000', 'num-2000', 'num-10000', 'num-100000', 'num-1000000', 'num-2000000'].includes(v.id)
+                );
+              }
+              if (cat === 'numbers_accents') {
+                return v.category === 'numbers' && (v.hasAccents || /[áéíóúñÁÉÍÓÚÑ]/.test(v.spanish));
+              }
+              return v.category === cat;
+            });
+          });
         }
       } else if (categoryParam === 'numbers_0_20') {
         pool = pool.filter(
@@ -175,17 +202,25 @@ export const Quiz: React.FC = () => {
       // When pool has fewer items than requested (e.g. 4 items, but user asked for 50 questions):
       selectedPool = [...pool];
 
-      // 1. First backfill from the broader category (e.g. other numbers in numbers category)
-      const baseCategory = categoryParam.startsWith('numbers') ? 'numbers' : categoryParam;
-      if (baseCategory !== 'all') {
-        const remainingInCat = VOCABULARY_DATABASE.filter(
-          (v) => v.category === baseCategory && !selectedPool.some((p) => p.id === v.id)
-        ).sort(() => 0.5 - Math.random());
-        const needed = countParam - selectedPool.length;
-        selectedPool.push(...remainingInCat.slice(0, needed));
+      // 1. If NOT in wanted words mode, backfill from the broader selected categories
+      if (!includeIdsParam) {
+        const categoriesParam = searchParams.get('categories');
+        const allowedCats = categoriesParam
+          ? categoriesParam.split(',').filter(Boolean)
+          : categoryParam !== 'all'
+          ? [categoryParam.startsWith('numbers') ? 'numbers' : categoryParam]
+          : [];
+
+        if (allowedCats.length > 0 && !allowedCats.includes('all')) {
+          const remainingInCats = VOCABULARY_DATABASE.filter(
+            (v) => allowedCats.includes(v.category) && !selectedPool.some((p) => p.id === v.id)
+          ).sort(() => 0.5 - Math.random());
+          const needed = countParam - selectedPool.length;
+          selectedPool.push(...remainingInCats.slice(0, needed));
+        }
       }
 
-      // 2. If still fewer than countParam, cycle through the pool so user gets full requested count (50 questions)
+      // 2. If still fewer than countParam, cycle through the pool (repeating wanted words or pool words)
       while (selectedPool.length < countParam && pool.length > 0) {
         const shuffledCopy = [...pool].sort(() => 0.5 - Math.random());
         const needed = countParam - selectedPool.length;
@@ -668,6 +703,16 @@ export const Quiz: React.FC = () => {
             <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
               {currentQ.vocab.category}
             </span>
+            {searchParams.get('includeIds') && (
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-[#CE82FF] flex items-center gap-1">
+                🎯 Wanted Words Drill
+              </span>
+            )}
+            {searchParams.get('categories') && !searchParams.get('categories')?.includes('all') && (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-sky-100 dark:bg-sky-950/60 text-[#1CB0F6]">
+                Multi-Category
+              </span>
+            )}
             {mode === 'mistake_revision' && (
               <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-rose-100 dark:bg-rose-950/60 text-[#FF4B4B] flex items-center gap-1">
                 <RotateCcw className="w-3 h-3" />
