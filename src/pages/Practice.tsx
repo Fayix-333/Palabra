@@ -156,14 +156,14 @@ const PRACTICE_GAMES: PracticeGameCard[] = [
   },
   {
     id: 'game-number-ninja',
-    title: 'Number Ninja',
-    subtitle: '0 to 1,000,000 drill',
-    description: 'Learn compound numbers (veintitrés, veintiséis) and irregular hundreds (quinientos).',
+    title: 'Number Ninja: Random Numbers',
+    subtitle: 'Dynamic random numbers (2345, 1546...)',
+    description: 'Learn compound numbers and translate fresh, unpredictable numbers every time: four-digit numbers like 2,345, 1,546, irregular hundreds, and strict accents.',
     mode: 'type_translation',
-    category: 'numbers',
-    count: 25,
+    category: 'numbers_random',
+    count: 20,
     strict: true,
-    xpReward: 40,
+    xpReward: 45,
     icon: Hash,
     accentColor: 'border-[#1CB0F6] bg-[#E5F6FF] dark:bg-sky-950/40 text-[#1CB0F6]',
     badgeBg: 'bg-[#1CB0F6]',
@@ -273,7 +273,7 @@ export const Practice: React.FC = () => {
     });
   };
 
-  const handleSelectPresetCombo = (combo: 'numbers_colors' | 'fruits_veggies' | 'time' | 'all') => {
+  const handleSelectPresetCombo = (combo: 'numbers_colors' | 'fruits_veggies' | 'time' | 'random_numbers' | 'all') => {
     if (combo === 'all') {
       setSelectedCategories(['all']);
     } else if (combo === 'numbers_colors') {
@@ -282,6 +282,8 @@ export const Practice: React.FC = () => {
       setSelectedCategories(['fruits', 'vegetables']);
     } else if (combo === 'time') {
       setSelectedCategories(['days', 'months']);
+    } else if (combo === 'random_numbers') {
+      setSelectedCategories(['numbers_random']);
     }
   };
 
@@ -290,7 +292,7 @@ export const Practice: React.FC = () => {
     if (selectedCategories.includes('all')) return VOCABULARY_DATABASE;
     return VOCABULARY_DATABASE.filter((v) => {
       return selectedCategories.some((cat) => {
-        if (cat === 'numbers' || cat === 'numbers_all') return v.category === 'numbers';
+        if (cat === 'numbers' || cat === 'numbers_all' || cat === 'numbers_random') return v.category === 'numbers';
         if (cat === 'numbers_0_20') {
           return (
             v.category === 'numbers' &&
@@ -413,6 +415,7 @@ export const Practice: React.FC = () => {
 
   const handleLaunchCustom = () => {
     const isAll = selectedCategories.includes('all');
+    const hasRandomNumbers = selectedCategories.includes('numbers_random');
     const finalCount = selectedIncludeIds.length > 0
       ? (customCount > 0 ? customCount : selectedIncludeIds.length)
       : customCount;
@@ -425,6 +428,9 @@ export const Practice: React.FC = () => {
       difficulty: customDifficulty,
       speedLimit: String(customSpeedLimit),
     });
+    if (hasRandomNumbers) {
+      params.set('randomNumbers', 'true');
+    }
     if (!isAll && selectedCategories.length > 0) {
       params.set('categories', selectedCategories.join(','));
     }
@@ -732,14 +738,26 @@ export const Practice: React.FC = () => {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleLaunchCategory(cat.id)}
-                    className="w-full py-2.5 rounded-xl btn-duo-blue text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-button"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-white" />
-                    <span>PRACTICE {cat.name.toUpperCase()}</span>
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => handleLaunchCategory(cat.id)}
+                      className="w-full py-2.5 rounded-xl btn-duo-blue text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer shadow-button"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-white" />
+                      <span>PRACTICE {cat.name.toUpperCase()}</span>
+                    </button>
+
+                    {cat.id === 'numbers' && (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/quiz?mode=type_translation&category=numbers_random&count=20&strict=true')}
+                        className="w-full py-2 rounded-xl border-2 border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+                      >
+                        <span>🎲 DRILL RANDOM NUMBERS (2345, 1546...)</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -824,6 +842,19 @@ export const Practice: React.FC = () => {
                   }`}
                 >
                   🍎+🥕 Fruits & Vegetables (37+40)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectPresetCombo('random_numbers')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
+                    !selectedCategories.includes('all') &&
+                    selectedCategories.length === 1 &&
+                    selectedCategories.includes('numbers_random')
+                      ? 'border-[#FF9600] bg-[#FFF5E5] dark:bg-amber-950/60 text-[#FF9600]'
+                      : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                  }`}
+                >
+                  🎲 Random Numbers (2345, 1546...)
                 </button>
                 <button
                   type="button"
@@ -960,6 +991,12 @@ export const Practice: React.FC = () => {
                       <div className="space-y-1">
                         {[
                           {
+                            id: 'numbers_random',
+                            title: 'Numbers: Random Dynamic Numbers (2345, 1546...)',
+                            count: 'Dynamic',
+                            icon: '🎲',
+                          },
+                          {
                             id: 'numbers',
                             title: 'Numbers (All 0 to 1,000,000)',
                             count: 87,
@@ -1087,6 +1124,39 @@ export const Practice: React.FC = () => {
                     </button>
                   );
                 })}
+
+                {/* Direct Card for Random Dynamic Numbers */}
+                {(() => {
+                  const isChecked = selectedCategories.includes('numbers_random');
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleCategory('numbers_random')}
+                      className={`p-3 rounded-2xl border-2 text-left transition-all cursor-pointer ${
+                        isChecked
+                          ? 'border-[#FF9600] bg-amber-50 dark:bg-amber-950/40 text-slate-900 dark:text-white font-black shadow-xs ring-1 ring-amber-400/40'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs truncate block">🎲 Random Numbers</span>
+                        <div
+                          className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold ${
+                            isChecked
+                              ? 'bg-[#FF9600] border-[#FF9600] text-white'
+                              : 'border-slate-300 dark:border-slate-700'
+                          }`}
+                        >
+                          {isChecked ? '✓' : ''}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 truncate mt-0.5">
+                        <span>2345, 1546...</span>
+                        <span className="font-mono text-amber-500 font-bold">Infinite</span>
+                      </div>
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Selected Categories Chips Preview */}
@@ -1095,7 +1165,11 @@ export const Practice: React.FC = () => {
                   <span className="text-[11px] font-black uppercase text-slate-400">Active Filters:</span>
                   {selectedCategories.map((catId) => {
                     const catObj = CATEGORIES.find((c) => c.id === catId);
-                    const label = catObj ? catObj.name : catId.replace('numbers_', 'Numbers: ');
+                    const label = catObj
+                      ? catObj.name
+                      : catId === 'numbers_random'
+                      ? '🎲 Random Numbers (2345, 1546...)'
+                      : catId.replace('numbers_', 'Numbers: ');
                     return (
                       <span
                         key={catId}
@@ -1128,8 +1202,8 @@ export const Practice: React.FC = () => {
                 className="w-full p-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-[#1CB0F6]"
               >
                 <option value="mixed_quiz">🔀 Mixed Sprint (Multiple Choice + Typing)</option>
-                <option value="multiple_choice">🔘 Multiple Choice (4 Choices Per Question)</option>
-                <option value="type_translation">⌨️ Typing Translation (Strict Spelling)</option>
+                <option value="multiple_choice">🔘 Multiple Choice (4 Confusable Spelling & Accent Options)</option>
+                <option value="type_translation">⌨️ Typing Translation (Strict Spelling & Accents)</option>
                 <option value="speed_round">⚡ Rapid Speed Round (10s countdown)</option>
                 <option value="spelling_challenge">✨ Accent Master (Targeted Accents)</option>
                 <option value="mistake_revision">🔄 Mistake Revision (Prior Missed Words)</option>

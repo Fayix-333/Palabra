@@ -18,6 +18,8 @@ import { VOCABULARY_DATABASE } from '../data/vocabulary';
 import { useApp } from '../context/AppContext';
 import { soundManager } from '../utils/sound';
 import { evaluateAnswer } from '../utils/answerChecker';
+import { generateConfusableDistractors } from '../utils/distractorGenerator';
+import { generateRandomNumbersPool } from '../utils/spanishNumbers';
 import { AccentKeyboard } from '../components/common/AccentKeyboard';
 import { ProgressBar } from '../components/common/ProgressBar';
 import { ConfettiCelebration } from '../components/common/ConfettiCelebration';
@@ -78,12 +80,16 @@ export const Quiz: React.FC = () => {
     let pool = [...VOCABULARY_DATABASE];
     const currentWp = wordProgressRef.current;
     const includeIdsParam = searchParams.get('includeIds');
+    const isRandomNumbers = categoryParam === 'numbers_random' || searchParams.get('randomNumbers') === 'true';
 
     if (includeIdsParam) {
       const ids = includeIdsParam.split(',').filter(Boolean);
       if (ids.length > 0) {
         pool = VOCABULARY_DATABASE.filter((v) => ids.includes(v.id));
       }
+    } else if (isRandomNumbers) {
+      // Generate unpredictable random numbers every time (e.g. 2345, 1546, 387...)
+      pool = generateRandomNumbersPool(Math.max(countParam * 2, 40), 'thousands_user');
     } else if (mode === 'mistake_revision') {
       // Pick words with needsRevision or high incorrect count
       const mistakeWords = pool.filter(
@@ -107,9 +113,14 @@ export const Quiz: React.FC = () => {
       const categoriesParam = searchParams.get('categories');
       if (categoriesParam) {
         const catList = categoriesParam.split(',').filter(Boolean);
+        const hasRandomNumbers = catList.includes('numbers_random');
+
         if (catList.length > 0 && !catList.includes('all')) {
-          pool = pool.filter((v) => {
+          let filtered = pool.filter((v) => {
             return catList.some((cat) => {
+              if (cat === 'numbers_random') {
+                return false;
+              }
               if (cat === 'numbers_0_20') {
                 return (
                   v.category === 'numbers' &&
@@ -136,6 +147,13 @@ export const Quiz: React.FC = () => {
               return v.category === cat;
             });
           });
+
+          if (hasRandomNumbers) {
+            const randomPool = generateRandomNumbersPool(Math.max(countParam, 25), 'thousands_user');
+            filtered = [...filtered, ...randomPool];
+          }
+
+          pool = filtered;
         }
       } else if (categoryParam === 'numbers_0_20') {
         pool = pool.filter(
@@ -250,20 +268,8 @@ export const Quiz: React.FC = () => {
 
       let options: string[] = [];
       if (isMultipleChoice) {
-        // Collect 3 distractors from same category or pool
-        const otherWords = pool.filter((v) => v.id !== vocab.id);
-        const shuffledOthers = [...otherWords].sort(() => 0.5 - Math.random());
-        let distractors = shuffledOthers.slice(0, 3).map((v) => v.spanish);
-
-        // If not enough distractors in pool, grab from full database
-        if (distractors.length < 3) {
-          const fallbackOthers = VOCABULARY_DATABASE.filter(
-            (v) => v.id !== vocab.id && !distractors.includes(v.spanish)
-          ).sort(() => 0.5 - Math.random());
-          const extra = fallbackOthers.slice(0, 3 - distractors.length).map((v) => v.spanish);
-          distractors = [...distractors, ...extra];
-        }
-
+        // Collect 3 tricky, confusable distractors (spelling & accent mistakes)
+        const distractors = generateConfusableDistractors(vocab.spanish, vocab, pool);
         options = [vocab.spanish, ...distractors].sort(() => 0.5 - Math.random());
       }
 
@@ -719,9 +725,19 @@ export const Quiz: React.FC = () => {
                 Mistakes Drill
               </span>
             )}
+            {(categoryParam === 'numbers_random' || searchParams.get('randomNumbers') === 'true') && (
+              <span className="text-[10px] font-black px-2.5 py-1 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-[#FF9600] flex items-center gap-1">
+                🎲 Random Numbers
+              </span>
+            )}
             {strictAccents && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-[#FF9600]">
                 Strict Accents
+              </span>
+            )}
+            {currentQ.questionType === 'multiple_choice' && (
+              <span className="text-[10px] font-black px-2 py-0.5 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-[#CE82FF]">
+                ✨ Spelling & Accent Traps
               </span>
             )}
           </div>
@@ -741,8 +757,11 @@ export const Quiz: React.FC = () => {
           <PacoMascot size="md" mood={feedbackResult ? (feedbackResult.isCorrect ? 'happy' : 'thinking') : 'encouraging'} />
           
           <div className="p-4 rounded-3xl rounded-bl-sm border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs relative max-w-md">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">
-              {currentQ.questionType === 'multiple_choice' ? 'Select the correct translation' : 'Type in Spanish'}
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+              <span>{currentQ.questionType === 'multiple_choice' ? 'Pick the 1 exact correct spelling' : 'Type in Spanish'}</span>
+              {currentQ.questionType === 'multiple_choice' && (
+                <span className="text-[10px] text-amber-500 font-bold">(accents matter!)</span>
+              )}
             </p>
             <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-0.5">
               {currentQ.vocab.english}
@@ -758,7 +777,7 @@ export const Quiz: React.FC = () => {
               const isSelected = selectedMcOption === opt;
               return (
                 <button
-                  key={opt}
+                  key={`opt-${optIndex}-${opt}`}
                   type="button"
                   disabled={isAnswerSubmitted}
                   onClick={() => setSelectedMcOption(opt)}
